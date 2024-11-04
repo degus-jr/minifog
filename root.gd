@@ -56,7 +56,7 @@ func _ready() -> void:
 	get_window().title = "DM Window"
 	file_menu.connect('id_pressed', _on_file_id_pressed)
 	settings_menu.connect('id_pressed', _on_settings_id_pressed)
-	file_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images/.map files")
+	file_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images / .map files")
 	save_dialog.add_filter("*.map", ".map files")
 	update_brushes()
 
@@ -91,7 +91,9 @@ func update_fog(pos, erase: bool = false):
 		dm_fog_texture.update(dm_fog_image)
 
 		player_fog_image.blend_rect(light_brush, blend_rect, pos - offset)
-		player_fog_texture.update(player_fog_image)
+		player_fog_texture.update(dm_fog_image)
+
+		dm_fog.material.set_shader_parameter('mask_texture', player_fog_texture)
 
 	if erase:
 		dm_fog_image.blend_rect(gray_brush, blend_rect, pos - offset)
@@ -218,17 +220,21 @@ func load_map(path: String) -> void:
 		map_image_height = map_image.get_size()[1]
 
 
+		# dm_fog_image = Image.new()
 		dm_fog_image = Image.create(map_image_width * fog_scaling, map_image_height * fog_scaling, false, Image.FORMAT_RGBAH)
-		dm_fog_image.fill(Color(0.5, 0.5, 0.5, 1))
+		dm_fog_image.fill(Color.RED)
+		dm_fog_image.resize(map_image_width, map_image_height)
+
 
 		player_fog_image = Image.create(map_image_width * fog_scaling, map_image_height * fog_scaling, false, Image.FORMAT_RGBAH)
 		player_fog_image.fill(Color(0, 0, 0, 1))
 
 	dm_fog_texture = ImageTexture.create_from_image(dm_fog_image)
-	dm_fog.texture = dm_fog_texture
+	dm_fog.scale = Vector2.ONE * 2
 
 	player_fog_texture = ImageTexture.create_from_image(player_fog_image)
 	player_fog.texture = player_fog_texture
+	dm_fog.material.set_shader_parameter('mask_texture', dm_fog_texture)
 
 
 	var image_texture = ImageTexture.new()

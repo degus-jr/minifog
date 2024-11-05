@@ -2,9 +2,12 @@ extends Control
 
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
 @onready var settings_menu: PopupMenu = $GUI/MenuBar/Settings
+@onready var colorscheme_menu: PopupMenu = $GUI/MenuBar/Colorscheme
 @onready var load_dialog: FileDialog = $LoadDialog
 @onready var save_dialog: FileDialog = $SaveDialog
 @onready var warning: AcceptDialog = $Warning
+@onready var cursor_node : Node2D = $CursorNode
+@onready var cursor_texture : TextureRect = $CursorNode/TextureRect
 
 @onready var dm_camera: Camera2D = $Camera
 @onready var dm_fog = $DmRoot/Fog
@@ -19,7 +22,11 @@ extends Control
 
 const LightTexture = preload('res://Light.png')
 const DarkTexture = preload('res://Dark.png')
-const FogTexture = preload('res://fog.jpg')
+const PerlinTexture = preload('res://fog.jpg')
+const PlasmaTexture = preload('res://Plasma.jpg')
+
+const BlackIndicatorTexture = preload('res://BlackIndicator.png')
+const WhiteIndicatorTexture = preload('res://WhiteIndicator.png')
 
 var current_file_path : String
 
@@ -48,11 +55,14 @@ var m2_pressed: bool = false
 var prev_mouse_pos
 
 const FOG_COLOR_LIST : Array = [
-	null,
+	"fog",
+	"colorful_fog",
 	Color.BLACK,
-	Color.CORNFLOWER_BLUE,
+	Color.WHITE,
 	Color.DARK_GRAY,
-	Color.GHOST_WHITE,
+	Color.FUCHSIA,
+	Color.MIDNIGHT_BLUE,
+	Color.LIME,
 ]
 
 var fog_color_index : int = 0
@@ -63,9 +73,13 @@ func _ready() -> void:
 	get_window().title = "DM Window"
 	file_menu.connect('id_pressed', _on_file_id_pressed)
 	settings_menu.connect('id_pressed', _on_settings_id_pressed)
+	colorscheme_menu.connect('id_pressed', update_colorscheme)
 	load_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images / .map files")
 	save_dialog.add_filter("*.map", ".map files")
 	update_brushes()
+
+	cursor_texture.texture = WhiteIndicatorTexture
+	cursor_texture.size = Vector2(brush_size, brush_size)
 
 	var args = OS.get_cmdline_args()
 
@@ -78,6 +92,7 @@ func _ready() -> void:
 
 func update_brushes(value: int = 0) -> void:
 	brush_size = max(5, brush_size + value)
+	cursor_texture.size = Vector2(brush_size, brush_size)
 
 	light_brush = LightTexture.get_image()
 	dark_brush = DarkTexture.get_image()
@@ -86,6 +101,7 @@ func update_brushes(value: int = 0) -> void:
 	for i in range(2):
 		imglist[i].resize(brush_size, brush_size)
 		imglist[i].convert(Image.FORMAT_RGBAH)
+
 
 func update_mask_wrapper(pos, erase: bool = false):
 	if prev_mouse_pos == null:
@@ -125,10 +141,9 @@ func update_mask(pos, erase: bool = false):
 	player_fog.material.set_shader_parameter('mask_texture', mask_texture)
 
 func _process(_delta):
+	cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
 	if Input.is_action_pressed("quit"):
 		get_tree().quit()
-
-	queue_redraw()
 
 func _input(event: InputEvent) -> void:
 	if current_file_path == "":
@@ -139,10 +154,15 @@ func _input(event: InputEvent) -> void:
 			if event.keycode == KEY_C:
 				black_circle_bool = not black_circle_bool
 				settings_menu.set_item_checked(0, black_circle_bool)
+				if black_circle_bool:
+					cursor_texture.texture = BlackIndicatorTexture
+				else:
+					cursor_texture.texture = WhiteIndicatorTexture
+
 
 			if event.keycode == KEY_T:
-				fog_color_index = (fog_color_index + 1) % len(FOG_COLOR_LIST)
-				update_fog_texture(FOG_COLOR_LIST[fog_color_index])
+				var id = (fog_color_index + 1) % len(FOG_COLOR_LIST)
+				update_colorscheme(id)
 
 			if event.keycode == KEY_P:
 				performance_mode = not performance_mode
@@ -198,30 +218,15 @@ func _input(event: InputEvent) -> void:
 			update_mask_wrapper(pos, true)
 		prev_mouse_pos = pos
 
-func _draw() -> void:
-	var circle_color : Color
-	if black_circle_bool:
-		circle_color = Color.BLACK
-	else:
-		circle_color = Color.WHITE
-
-	draw_circle(get_global_mouse_position(), brush_size * 0.5, circle_color, false, -1)
-	draw_rect(Rect2(get_global_mouse_position(), Vector2(brush_size, brush_size)), circle_color)
-	# var posx = get_global_mouse_position().x
-	# var posy = get_global_mouse_position().y
-	# var points = [
-	# 	[posx, posy],
-	# 	[posx + brush_size, posy + brush_size],
-	# 	[posx + brush_size, posy - brush_size],
-	# 	[posx - brush_size, posy - brush_size],
-	# 	]
-	# draw_polyline(points, Color.BLACK, 3, true)
 
 func update_fog_texture(color):
 	var fog_image_texture
-	if color == null:
-		fog_image_texture = FogTexture
-		RenderingServer.set_default_clear_color(Color.BLACK)
+	if color is String:
+		if color == "fog":
+			fog_image_texture = PerlinTexture
+		elif color == "colorful_fog":
+			fog_image_texture = PlasmaTexture
+		RenderingServer.set_default_clear_color(Color.WHITE)
 
 	else:
 		var fog_image = Image.create(map_image_width, map_image_height, false, Image.FORMAT_RGBAH)
@@ -318,7 +323,7 @@ func _on_file_id_pressed(id: int) -> void:
 
 	if id == 2:
 		warning.title = "Keybindings"
-		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan/Move view\n    Mouse wheel: Zoom\n    Shift+Mouse wheel: Resize brush\n    Ctrl+S: Save\nKeybinds\n    T: Toggle between fog colors\n    C: Change color of circle\n    P: Toggle performance mode"
+		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan/Move view\n    Mouse wheel: Zoom\n    Shift+Mouse wheel: Resize brush\n    Ctrl+S: Save\nKeybinds\n    T: Toggle between fog themes\n    C: Change color of circle\n    P: Toggle performance mode"
 		warning.popup_centered()
 
 	if id == 3:
@@ -328,6 +333,10 @@ func _on_settings_id_pressed(id: int) -> void:
 	if id == 0:
 		black_circle_bool = not black_circle_bool
 		settings_menu.set_item_checked(id, black_circle_bool)
+		if black_circle_bool:
+			cursor_texture.texture = BlackIndicatorTexture
+		else:
+			cursor_texture.texture = WhiteIndicatorTexture
 
 	if id == 1:
 		performance_mode = not performance_mode
@@ -336,6 +345,15 @@ func _on_settings_id_pressed(id: int) -> void:
 		else:
 			Engine.max_fps = 60
 		settings_menu.set_item_checked(id, performance_mode)
+
+func update_colorscheme(id: int) -> void:
+	fog_color_index = id
+	update_fog_texture(FOG_COLOR_LIST[fog_color_index])
+	colorscheme_menu.set_item_checked(id, true)
+
+	for i in range(len(FOG_COLOR_LIST)):
+		colorscheme_menu.set_item_checked(i, i == id)
+
 
 func _on_file_dialog_file_selected(path: String) -> void:
 	load_map(path)

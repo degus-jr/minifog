@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://yokehevvm6mu"
-path="res://.godot/imported/fog.jpg-aaa6cda489b7e23b8768845f6dc98ac0.ctex"
+uid="uid://c8xrk02p4btf8"
+path="res://.godot/imported/Plasma.jpg-1281de63f1180122adc251ca63906524.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://fog.jpg"
-dest_files=["res://.godot/imported/fog.jpg-aaa6cda489b7e23b8768845f6dc98ac0.ctex"]
+source_file="res://Plasma.jpg"
+dest_files=["res://.godot/imported/Plasma.jpg-1281de63f1180122adc251ca63906524.ctex"]
 
 [params]
 

@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://root.gd" id="1_pfv6b"]
 [ext_resource type="Script" path="res://PannedCamera.gd" id="2_jkg75"]
-[ext_resource type="Texture2D" uid="uid://4swwiwt0bldi" path="res://fog.jpg" id="3_hjclt"]
+[ext_resource type="Texture2D" uid="uid://yokehevvm6mu" path="res://fog.jpg" id="3_hjclt"]
 [ext_resource type="Shader" path="res://dm_shader.gdshader" id="3_kcijt"]
 [ext_resource type="Shader" path="res://player_shader.gdshader" id="3_ytxac"]
 
@@ -53,10 +53,39 @@ item_count = 4
 item_0/text = "Load"
 item_1/text = "Save"
 item_1/id = 1
-item_2/text = "See keybinds"
+item_2/text = "Help"
 item_2/id = 2
 item_3/text = "Exit"
 item_3/id = 3
+
+[node name="Colorscheme" type="PopupMenu" parent="GUI/MenuBar"]
+auto_translate_mode = 1
+prefer_native_menu = true
+item_count = 8
+item_0/text = "Fog"
+item_0/checkable = 2
+item_0/checked = true
+item_1/text = "Colorful fog"
+item_1/checkable = 2
+item_1/id = 1
+item_2/text = "Black"
+item_2/checkable = 2
+item_2/id = 2
+item_3/text = "White"
+item_3/checkable = 2
+item_3/id = 3
+item_4/text = "Gray"
+item_4/checkable = 2
+item_4/id = 4
+item_5/text = "Fuchsia"
+item_5/checkable = 2
+item_5/id = 5
+item_6/text = "Blue"
+item_6/checkable = 2
+item_6/id = 6
+item_7/text = "Lime"
+item_7/checkable = 2
+item_7/id = 7
 
 [node name="Settings" type="PopupMenu" parent="GUI/MenuBar"]
 auto_translate_mode = 1
@@ -80,12 +109,13 @@ material = SubResource("ShaderMaterial_xsao3")
 offset_right = 70.0
 offset_bottom = 70.0
 texture = ExtResource("3_hjclt")
+expand_mode = 1
 metadata/_edit_use_anchors_ = true
 
 [node name="PlayerWindow" type="Window" parent="."]
 title = "Player Window"
 initial_position = 2
-size = Vector2i(500, 500)
+size = Vector2i(800, 500)
 
 [node name="Camera" type="Camera2D" parent="PlayerWindow"]
 script = ExtResource("2_jkg75")
@@ -102,9 +132,15 @@ material = SubResource("ShaderMaterial_lrpuh")
 offset_right = 256.0
 offset_bottom = 256.0
 texture = ExtResource("3_hjclt")
+expand_mode = 1
 metadata/_edit_use_anchors_ = true
 
-[node name="FogNode" type="Node2D" parent="."]
+[node name="CursorNode" type="Node2D" parent="."]
+
+[node name="TextureRect" type="TextureRect" parent="CursorNode"]
+offset_right = 40.0
+offset_bottom = 40.0
+expand_mode = 1
 
 [connection signal="file_selected" from="LoadDialog" to="." method="_on_file_dialog_file_selected"]
 [connection signal="file_selected" from="SaveDialog" to="." method="_on_file_dialog_2_file_selected"]
@@ -112,5 +148,7 @@ metadata/_edit_use_anchors_ = true
 [connection signal="mouse_exited" from="GUI/MenuBar" to="." method="_on_menu_bar_mouse_exited"]
 [connection signal="mouse_entered" from="GUI/MenuBar/File" to="." method="_on_file_mouse_entered"]
 [connection signal="mouse_exited" from="GUI/MenuBar/File" to="." method="_on_file_mouse_exited"]
+[connection signal="mouse_entered" from="GUI/MenuBar/Colorscheme" to="." method="_on_settings_mouse_entered"]
+[connection signal="mouse_exited" from="GUI/MenuBar/Colorscheme" to="." method="_on_settings_mouse_exited"]
 [connection signal="mouse_entered" from="GUI/MenuBar/Settings" to="." method="_on_settings_mouse_entered"]
 [connection signal="mouse_exited" from="GUI/MenuBar/Settings" to="." method="_on_settings_mouse_exited"]

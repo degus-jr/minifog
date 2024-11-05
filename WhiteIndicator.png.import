@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://yokehevvm6mu"
-path="res://.godot/imported/fog.jpg-aaa6cda489b7e23b8768845f6dc98ac0.ctex"
+uid="uid://dyhf5lmpljgd1"
+path="res://.godot/imported/WhiteIndicator.png-b40d6de065e16db0be3ac59426dbba6f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://fog.jpg"
-dest_files=["res://.godot/imported/fog.jpg-aaa6cda489b7e23b8768845f6dc98ac0.ctex"]
+source_file="res://WhiteIndicator.png"
+dest_files=["res://.godot/imported/WhiteIndicator.png-b40d6de065e16db0be3ac59426dbba6f.ctex"]
 
 [params]
 

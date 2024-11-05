@@ -19,16 +19,24 @@ layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_pfv6b")
 
+[node name="Warning" type="AcceptDialog" parent="."]
+force_native = true
+
 [node name="Camera" type="Camera2D" parent="."]
 script = ExtResource("2_jkg75")
 
-[node name="FileDialog" type="FileDialog" parent="."]
+[node name="LoadDialog" type="FileDialog" parent="."]
 title = "Open a File"
 initial_position = 2
 size = Vector2i(600, 400)
 ok_button_text = "Open"
 dialog_hide_on_ok = true
 file_mode = 0
+access = 2
+use_native_dialog = true
+
+[node name="SaveDialog" type="FileDialog" parent="."]
+dialog_hide_on_ok = true
 access = 2
 use_native_dialog = true
 
@@ -41,19 +49,24 @@ offset_bottom = 40.0
 
 [node name="File" type="PopupMenu" parent="GUI/MenuBar"]
 prefer_native_menu = true
-item_count = 3
+item_count = 4
 item_0/text = "Load"
 item_1/text = "Save"
 item_1/id = 1
-item_2/text = "Exit"
+item_2/text = "See keybinds"
 item_2/id = 2
+item_3/text = "Exit"
+item_3/id = 3
 
 [node name="Settings" type="PopupMenu" parent="GUI/MenuBar"]
 auto_translate_mode = 1
 prefer_native_menu = true
-item_count = 1
+item_count = 2
 item_0/text = "Flip circle colour"
 item_0/checkable = 1
+item_1/text = "Performance mode"
+item_1/checkable = 1
+item_1/id = 1
 
 [node name="DmRoot" type="Node2D" parent="."]
 
@@ -91,18 +104,13 @@ offset_bottom = 256.0
 texture = ExtResource("3_hjclt")
 metadata/_edit_use_anchors_ = true
 
-[node name="FileDialog2" type="FileDialog" parent="."]
-dialog_hide_on_ok = true
-access = 2
-use_native_dialog = true
-
 [node name="FogNode" type="Node2D" parent="."]
 
-[connection signal="file_selected" from="FileDialog" to="." method="_on_file_dialog_file_selected"]
+[connection signal="file_selected" from="LoadDialog" to="." method="_on_file_dialog_file_selected"]
+[connection signal="file_selected" from="SaveDialog" to="." method="_on_file_dialog_2_file_selected"]
 [connection signal="mouse_entered" from="GUI/MenuBar" to="." method="_on_menu_bar_mouse_entered"]
 [connection signal="mouse_exited" from="GUI/MenuBar" to="." method="_on_menu_bar_mouse_exited"]
 [connection signal="mouse_entered" from="GUI/MenuBar/File" to="." method="_on_file_mouse_entered"]
 [connection signal="mouse_exited" from="GUI/MenuBar/File" to="." method="_on_file_mouse_exited"]
 [connection signal="mouse_entered" from="GUI/MenuBar/Settings" to="." method="_on_settings_mouse_entered"]
 [connection signal="mouse_exited" from="GUI/MenuBar/Settings" to="." method="_on_settings_mouse_exited"]
-[connection signal="file_selected" from="FileDialog2" to="." method="_on_file_dialog_2_file_selected"]

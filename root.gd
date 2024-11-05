@@ -42,6 +42,8 @@ var dark_brush : Image
 var m1_pressed: bool = false
 var m2_pressed: bool = false
 
+var prev_mouse_pos = null
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -74,25 +76,26 @@ func update_brushes(value: int = 0) -> void:
 
 
 
-func update_mask(pos, erase: bool = false):
+func update_mask(erase: bool = false):
 	var offset = Vector2.ONE * brush_size / 2
+	var pos = get_global_mouse_position()
+	offset -= Vector2(map_image_width * 0.5, map_image_height * 0.5)
+
 	if not erase:
 		mask_image.blend_rect(light_brush, light_brush.get_used_rect(), pos - offset)
-		mask_texture = ImageTexture.create_from_image(mask_image)
-		dm_fog.material.set_shader_parameter('mask_texture', mask_texture)
-		player_fog.material.set_shader_parameter('mask_texture', mask_texture)
 
 	if erase:
 		mask_image.blend_rect(dark_brush, dark_brush.get_used_rect(), pos - offset)
-		mask_texture = ImageTexture.create_from_image(mask_image)
-		dm_fog.material.set_shader_parameter('mask_texture', mask_texture)
-		player_fog.material.set_shader_parameter('mask_texture', mask_texture)
+
+	mask_texture = ImageTexture.create_from_image(mask_image)
+	dm_fog.material.set_shader_parameter('mask_texture', mask_texture)
+	player_fog.material.set_shader_parameter('mask_texture', mask_texture)
 
 func _process(_delta):
 	if Input.is_action_pressed("quit"):
 		get_tree().quit()
 
-	queue_redraw()
+	# queue_redraw()
 
 func _input(event: InputEvent) -> void:
 
@@ -124,19 +127,19 @@ func _input(event: InputEvent) -> void:
 			m1_pressed = event.pressed
 
 			if m1_pressed:
-				update_mask(get_global_mouse_position())
+				update_mask()
 
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			m2_pressed = event.pressed
 
 			if m2_pressed:
-				update_mask(get_global_mouse_position(), true)
+				update_mask(true)
 
 	elif event is InputEventMouseMotion:
 		if m1_pressed:
-			update_mask(get_global_mouse_position())
+			update_mask()
 		elif m2_pressed:
-			update_mask(get_global_mouse_position(), true)
+			update_mask(true)
 
 func _draw() -> void:
 	var circle_color : Color

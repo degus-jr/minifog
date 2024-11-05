@@ -14,7 +14,7 @@ shader = ExtResource("3_kcijt")
 shader = ExtResource("3_ytxac")
 
 [node name="Root" type="Control"]
-z_index = 3
+z_index = 6
 layout_mode = 3
 anchors_preset = 0
 script = ExtResource("1_pfv6b")

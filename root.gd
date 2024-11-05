@@ -205,8 +205,17 @@ func _draw() -> void:
 	else:
 		circle_color = Color.WHITE
 
-	draw_arc(get_global_mouse_position(), brush_size * 0.5, 0.0, 2 * 3.141592, 100, circle_color, 1)
-	draw_circle(get_global_mouse_position(), brush_size * 0.5, circle_color, false, 1)
+	draw_circle(get_global_mouse_position(), brush_size * 0.5, circle_color, false, -1)
+	draw_rect(Rect2(get_global_mouse_position(), Vector2(brush_size, brush_size)), circle_color)
+	# var posx = get_global_mouse_position().x
+	# var posy = get_global_mouse_position().y
+	# var points = [
+	# 	[posx, posy],
+	# 	[posx + brush_size, posy + brush_size],
+	# 	[posx + brush_size, posy - brush_size],
+	# 	[posx - brush_size, posy - brush_size],
+	# 	]
+	# draw_polyline(points, Color.BLACK, 3, true)
 
 func update_fog_texture(color):
 	var fog_image_texture

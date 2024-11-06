@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://root.gd" id="1_pfv6b"]
 [ext_resource type="Script" path="res://PannedCamera.gd" id="2_jkg75"]
-[ext_resource type="Texture2D" uid="uid://yokehevvm6mu" path="res://fog.jpg" id="3_hjclt"]
+[ext_resource type="Texture2D" uid="uid://dvsluehtl4tpr" path="res://fog.jpg" id="3_hjclt"]
 [ext_resource type="Shader" path="res://dm_shader.gdshader" id="3_kcijt"]
 [ext_resource type="Shader" path="res://player_shader.gdshader" id="3_ytxac"]
 

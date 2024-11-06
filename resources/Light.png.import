@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dbiv78dv3ydqc"
-path="res://.godot/imported/BlackIndicator.png-d7fc5af2d4876b8b454cdb92b5ff5195.ctex"
+uid="uid://ca6cvkpt3e7i6"
+path="res://.godot/imported/Light.png-78a47dd4677217883305ba86a39d4144.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://BlackIndicator.png"
-dest_files=["res://.godot/imported/BlackIndicator.png-d7fc5af2d4876b8b454cdb92b5ff5195.ctex"]
+source_file="res://resources/Light.png"
+dest_files=["res://.godot/imported/Light.png-78a47dd4677217883305ba86a39d4144.ctex"]
 
 [params]
 

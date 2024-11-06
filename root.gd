@@ -20,13 +20,13 @@ extends Control
 @onready var player_root = $PlayerWindow/PlayerRoot
 @onready var player_background = $PlayerWindow/PlayerRoot/Background
 
-const LightTexture = preload('res://Light.png')
-const DarkTexture = preload('res://Dark.png')
-const PerlinTexture = preload('res://fog.jpg')
-const PlasmaTexture = preload('res://Plasma.jpg')
+const LightTexture = preload('res://resources/Light.png')
+const DarkTexture = preload('res://resources/Dark.png')
+const PerlinTexture = preload('res://resources/fog.jpg')
+const PlasmaTexture = preload('res://resources/Plasma.jpg')
 
-const BlackIndicatorTexture = preload('res://BlackIndicator.png')
-const WhiteIndicatorTexture = preload('res://WhiteIndicator.png')
+const BlackIndicatorTexture = preload('res://resources/BlackIndicator.png')
+const WhiteIndicatorTexture = preload('res://resources/WhiteIndicator.png')
 
 var current_file_path : String
 

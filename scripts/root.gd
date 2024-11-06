@@ -347,6 +347,8 @@ func _on_settings_id_pressed(id: int) -> void:
 		settings_menu.set_item_checked(id, performance_mode)
 
 func update_colorscheme(id: int) -> void:
+	if current_file_path == "":
+		return
 	fog_color_index = id
 	update_fog_texture(FOG_COLOR_LIST[fog_color_index])
 	colorscheme_menu.set_item_checked(id, true)

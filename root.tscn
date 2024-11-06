@@ -2,16 +2,16 @@
 
 [ext_resource type="Script" path="res://scripts/root.gd" id="1_fnbe8"]
 [ext_resource type="Script" path="res://scripts/panned_camera.gd" id="2_krtgi"]
-[ext_resource type="Shader" path="res://dm_shader.gdshader" id="3_kcijt"]
-[ext_resource type="Shader" path="res://player_shader.gdshader" id="3_ytxac"]
+[ext_resource type="Shader" path="res://shaders/dm_shader.gdshader" id="3_fvqp8"]
 [ext_resource type="Texture2D" uid="uid://bxwdhua5sspow" path="res://resources/Fog.jpg" id="4_ak8k0"]
+[ext_resource type="Shader" path="res://shaders/player_shader.gdshader" id="5_v4wp5"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xsao3"]
 resource_local_to_scene = true
-shader = ExtResource("3_kcijt")
+shader = ExtResource("3_fvqp8")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_lrpuh"]
-shader = ExtResource("3_ytxac")
+shader = ExtResource("5_v4wp5")
 
 [node name="Root" type="Control"]
 z_index = 6

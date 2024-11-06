@@ -1,7 +1,7 @@
 [gd_scene load_steps=8 format=3 uid="uid://ct4l808ib7i8p"]
 
-[ext_resource type="Script" path="res://root.gd" id="1_pfv6b"]
-[ext_resource type="Script" path="res://PannedCamera.gd" id="2_jkg75"]
+[ext_resource type="Script" path="res://scripts/root.gd" id="1_fnbe8"]
+[ext_resource type="Script" path="res://scripts/panned_camera.gd" id="2_krtgi"]
 [ext_resource type="Texture2D" uid="uid://dvsluehtl4tpr" path="res://fog.jpg" id="3_hjclt"]
 [ext_resource type="Shader" path="res://dm_shader.gdshader" id="3_kcijt"]
 [ext_resource type="Shader" path="res://player_shader.gdshader" id="3_ytxac"]
@@ -17,13 +17,13 @@ shader = ExtResource("3_ytxac")
 z_index = 6
 layout_mode = 3
 anchors_preset = 0
-script = ExtResource("1_pfv6b")
+script = ExtResource("1_fnbe8")
 
 [node name="Warning" type="AcceptDialog" parent="."]
 force_native = true
 
 [node name="Camera" type="Camera2D" parent="."]
-script = ExtResource("2_jkg75")
+script = ExtResource("2_krtgi")
 
 [node name="LoadDialog" type="FileDialog" parent="."]
 title = "Open a File"
@@ -118,7 +118,7 @@ initial_position = 2
 size = Vector2i(800, 500)
 
 [node name="Camera" type="Camera2D" parent="PlayerWindow"]
-script = ExtResource("2_jkg75")
+script = ExtResource("2_krtgi")
 
 [node name="PlayerRoot" type="Node2D" parent="PlayerWindow"]
 

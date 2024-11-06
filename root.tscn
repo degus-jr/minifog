@@ -93,7 +93,7 @@ prefer_native_menu = true
 item_count = 2
 item_0/text = "Flip circle colour"
 item_0/checkable = 1
-item_1/text = "Performance mode"
+item_1/text = "Limit FPS"
 item_1/checkable = 1
 item_1/id = 1
 

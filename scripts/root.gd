@@ -32,7 +32,6 @@ var current_file_path : String
 
 
 var hovering_over_gui : bool = false
-var mod_held : bool = false
 var black_circle_bool : bool = false
 var performance_mode : bool = false
 
@@ -49,8 +48,10 @@ var mask_texture : ImageTexture
 var light_brush : Image
 var dark_brush : Image
 
-var m1_pressed: bool = false
-var m2_pressed: bool = false
+var m1_held: bool = false
+var m2_held: bool = false
+var shift_held : bool = false
+var ctrl_held : bool = false
 
 var prev_mouse_pos
 
@@ -142,15 +143,21 @@ func update_mask(pos, erase: bool = false):
 
 func _process(_delta):
 	cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
-	if Input.is_action_pressed("quit"):
-		get_tree().quit()
 
 func _input(event: InputEvent) -> void:
 	if current_file_path == "":
 		return
 
 	if event is InputEventKey:
+		if event.keycode == KEY_SHIFT:
+			shift_held = event.pressed
+		if event.keycode == KEY_CTRL:
+			ctrl_held = event.pressed
+
 		if event.pressed:
+			if event.keycode == KEY_Q:
+				get_tree().quit()
+
 			if event.keycode == KEY_C:
 				black_circle_bool = not black_circle_bool
 				settings_menu.set_item_checked(0, black_circle_bool)
@@ -172,25 +179,13 @@ func _input(event: InputEvent) -> void:
 					Engine.max_fps = 60
 				settings_menu.set_item_checked(1, performance_mode)
 
-	if event.is_action_pressed('mod'):
-		mod_held = true
-
-	if event.is_action_released('mod'):
-		mod_held = false
-
-	if event.is_action_pressed('zoom_in') and mod_held:
-		update_brushes(-5)
-
-	if event.is_action_pressed('zoom_out') and mod_held:
-		update_brushes(5)
-
-	if event.is_action_pressed('save'):
-		if current_file_path != "":
-			if current_file_path.ends_with('.map'):
-				write_map(current_file_path)
-			else:
-				save_dialog.popup()
-
+			if event.keycode == KEY_S:
+				if ctrl_held:
+					if current_file_path != "":
+						if current_file_path.ends_with('.map'):
+							write_map(current_file_path)
+						else:
+							save_dialog.popup()
 
 	if event is InputEventMouseButton:
 		var pos = get_global_mouse_position()
@@ -198,23 +193,32 @@ func _input(event: InputEvent) -> void:
 			return
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
-			m1_pressed = event.pressed
+			m1_held = event.pressed
 
-			if m1_pressed:
+			if m1_held:
 				update_mask(pos)
 
 		if event.button_index == MOUSE_BUTTON_RIGHT:
-			m2_pressed = event.pressed
+			m2_held = event.pressed
 
-			if m2_pressed:
+			if m2_held:
 				update_mask(pos, true)
+
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			if shift_held:
+				update_brushes(-5)
+
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			if shift_held:
+				update_brushes(5)
+
 		prev_mouse_pos = pos
 
 	elif event is InputEventMouseMotion:
 		var pos = get_global_mouse_position()
-		if m1_pressed:
+		if m1_held:
 			update_mask_wrapper(pos)
-		elif m2_pressed:
+		elif m2_held:
 			update_mask_wrapper(pos, true)
 		prev_mouse_pos = pos
 
@@ -323,7 +327,7 @@ func _on_file_id_pressed(id: int) -> void:
 
 	if id == 2:
 		warning.title = "Keybindings"
-		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan/Move view\n    Mouse wheel: Zoom\n    Shift+Mouse wheel: Resize brush\n    Ctrl+S: Save\nKeybinds\n    T: Toggle between fog themes\n    C: Change color of circle\n    P: Toggle performance mode"
+		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan view\n    WASD/Arrow keys: Move view\n    Mouse wheel: Zoom\n    Shift+Mouse wheel: Resize brush\n    Ctrl+S: Save\nExtra keybinds\n    T: Toggle between fog themes\n    C: Change color of circle\n    P: Limit FPS"
 		warning.popup_centered()
 
 	if id == 3:

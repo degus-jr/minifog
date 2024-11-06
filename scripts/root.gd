@@ -22,7 +22,7 @@ extends Control
 
 const LightTexture = preload('res://resources/Light.png')
 const DarkTexture = preload('res://resources/Dark.png')
-const PerlinTexture = preload('res://resources/fog.jpg')
+const PerlinTexture = preload('res://resources/Fog.jpg')
 const PlasmaTexture = preload('res://resources/Plasma.jpg')
 
 const BlackIndicatorTexture = preload('res://resources/BlackIndicator.png')

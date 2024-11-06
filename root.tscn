@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" path="res://scripts/root.gd" id="1_fnbe8"]
 [ext_resource type="Script" path="res://scripts/panned_camera.gd" id="2_krtgi"]
-[ext_resource type="Texture2D" uid="uid://dvsluehtl4tpr" path="res://fog.jpg" id="3_hjclt"]
 [ext_resource type="Shader" path="res://dm_shader.gdshader" id="3_kcijt"]
 [ext_resource type="Shader" path="res://player_shader.gdshader" id="3_ytxac"]
+[ext_resource type="Texture2D" uid="uid://bxwdhua5sspow" path="res://resources/Fog.jpg" id="4_ak8k0"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xsao3"]
 resource_local_to_scene = true
@@ -108,7 +108,7 @@ offset_bottom = 40.0
 material = SubResource("ShaderMaterial_xsao3")
 offset_right = 70.0
 offset_bottom = 70.0
-texture = ExtResource("3_hjclt")
+texture = ExtResource("4_ak8k0")
 expand_mode = 1
 metadata/_edit_use_anchors_ = true
 
@@ -131,7 +131,7 @@ offset_bottom = 40.0
 material = SubResource("ShaderMaterial_lrpuh")
 offset_right = 256.0
 offset_bottom = 256.0
-texture = ExtResource("3_hjclt")
+texture = ExtResource("4_ak8k0")
 expand_mode = 1
 metadata/_edit_use_anchors_ = true
 

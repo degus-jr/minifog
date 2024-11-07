@@ -9,6 +9,7 @@ const MOVE_SPEED : int = 300
 var target_zoom: float = 1
 
 var shift_held : bool = false
+var ctrl_held : bool = false
 
 var right_held : bool = false
 var left_held : bool = false
@@ -20,14 +21,24 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_SHIFT:
 			shift_held = event.pressed
 
+		if event.keycode == KEY_CTRL:
+			ctrl_held = event.pressed
+
 		if event.keycode == KEY_LEFT or event.keycode == KEY_A:
 			left_held = event.pressed
 
 		if event.keycode == KEY_UP or event.keycode == KEY_W:
 			up_held = event.pressed
 
-		if event.keycode == KEY_DOWN or event.keycode == KEY_S:
+		if event.keycode == KEY_DOWN:
 			down_held = event.pressed
+
+		if event.keycode == KEY_S:
+			if event.pressed:
+				if not ctrl_held:
+					down_held = true
+			else:
+				down_held = false
 
 		if event.keycode == KEY_RIGHT or event.keycode == KEY_D:
 			right_held = event.pressed

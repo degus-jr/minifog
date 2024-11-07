@@ -141,14 +141,3 @@ metadata/_edit_use_anchors_ = true
 offset_right = 40.0
 offset_bottom = 40.0
 expand_mode = 1
-
-[connection signal="file_selected" from="LoadDialog" to="." method="_on_file_dialog_file_selected"]
-[connection signal="file_selected" from="SaveDialog" to="." method="_on_file_dialog_2_file_selected"]
-[connection signal="mouse_entered" from="GUI/MenuBar" to="." method="_on_menu_bar_mouse_entered"]
-[connection signal="mouse_exited" from="GUI/MenuBar" to="." method="_on_menu_bar_mouse_exited"]
-[connection signal="mouse_entered" from="GUI/MenuBar/File" to="." method="_on_file_mouse_entered"]
-[connection signal="mouse_exited" from="GUI/MenuBar/File" to="." method="_on_file_mouse_exited"]
-[connection signal="mouse_entered" from="GUI/MenuBar/Colorscheme" to="." method="_on_settings_mouse_entered"]
-[connection signal="mouse_exited" from="GUI/MenuBar/Colorscheme" to="." method="_on_settings_mouse_exited"]
-[connection signal="mouse_entered" from="GUI/MenuBar/Settings" to="." method="_on_settings_mouse_entered"]
-[connection signal="mouse_exited" from="GUI/MenuBar/Settings" to="." method="_on_settings_mouse_exited"]

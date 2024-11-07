@@ -1,5 +1,6 @@
 extends Control
 
+@onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
 @onready var settings_menu: PopupMenu = $GUI/MenuBar/Settings
 @onready var colorscheme_menu: PopupMenu = $GUI/MenuBar/Colorscheme
@@ -72,9 +73,21 @@ var fog_color_index : int = 0
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	get_window().title = "DM Window"
+
+	load_dialog.connect("file_selected", func(path): load_map(path))
+	save_dialog.connect("file_selected", func(path): write_map(path))
+
+
 	file_menu.connect('id_pressed', _on_file_id_pressed)
 	settings_menu.connect('id_pressed', _on_settings_id_pressed)
 	colorscheme_menu.connect('id_pressed', update_colorscheme)
+
+
+	var gui_list = [menu_bar, file_menu, settings_menu,  colorscheme_menu]
+	for i in range(len(gui_list)):
+		gui_list[i].connect("mouse_entered", func(): hovering_over_gui = true)
+		gui_list[i].connect("mouse_exited", func(): hovering_over_gui = false)
+
 	load_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images / .map files")
 	save_dialog.add_filter("*.map", ".map files")
 	update_brushes()
@@ -359,29 +372,3 @@ func update_colorscheme(id: int) -> void:
 
 	for i in range(len(FOG_COLOR_LIST)):
 		colorscheme_menu.set_item_checked(i, i == id)
-
-
-func _on_file_dialog_file_selected(path: String) -> void:
-	load_map(path)
-
-func _on_file_dialog_2_file_selected(path:String) -> void:
-	write_map(path)
-
-
-func _on_menu_bar_mouse_entered() -> void:
-	hovering_over_gui = true
-
-func _on_menu_bar_mouse_exited() -> void:
-	hovering_over_gui = false
-
-func _on_file_mouse_entered() -> void:
-	hovering_over_gui = true
-
-func _on_file_mouse_exited() -> void:
-	hovering_over_gui = false
-
-func _on_settings_mouse_entered() -> void:
-	hovering_over_gui = true
-
-func _on_settings_mouse_exited() -> void:
-	hovering_over_gui = false

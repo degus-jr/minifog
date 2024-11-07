@@ -10,19 +10,20 @@ extends Control
 @onready var cursor_node : Node2D = $CursorNode
 @onready var cursor_texture : TextureRect = $CursorNode/TextureRect
 
+@onready var drawing_viewport : SubViewport = $DrawingViewport
+@onready var drawing_node : Node2D = $DrawingViewport/DrawingNode
+
 @onready var dm_camera: Camera2D = $Camera
-@onready var dm_fog = $DmRoot/Fog
+@onready var dm_fog = $DmFog
 @onready var dm_root = $DmRoot
 @onready var dm_background = $DmRoot/Background
 
 @onready var player_window: Window = $PlayerWindow
 @onready var player_camera: Camera2D = $PlayerWindow/Camera
-@onready var player_fog = $PlayerWindow/PlayerRoot/Fog
+@onready var player_fog = $PlayerWindow/PlayerFog
 @onready var player_root = $PlayerWindow/PlayerRoot
 @onready var player_background = $PlayerWindow/PlayerRoot/Background
 
-const LightTexture = preload('res://resources/Light.png')
-const DarkTexture = preload('res://resources/Dark.png')
 const PerlinTexture = preload('res://resources/Fog.jpg')
 const PlasmaTexture = preload('res://resources/Plasma.jpg')
 
@@ -31,6 +32,7 @@ const WhiteIndicatorTexture = preload('res://resources/WhiteIndicator.png')
 
 var current_file_path : String
 
+var fog_scaling : float = 1.2
 
 var hovering_over_gui : bool = false
 var black_circle_bool : bool = false
@@ -40,8 +42,8 @@ var brush_size : int = 50
 
 var map_image : Image
 
-var map_image_height : int
-var map_image_width : int
+var fog_image_height : int
+var fog_image_width : int
 
 var mask_image : Image
 var mask_texture : ImageTexture
@@ -55,6 +57,12 @@ var shift_held : bool = false
 var ctrl_held : bool = false
 
 var prev_mouse_pos
+var mouse_pos = Vector2.ZERO
+
+signal m1(pressed)
+signal m2(pressed)
+signal mouse_pos_signal(position)
+signal brush_size_changed(size)
 
 const FOG_COLOR_LIST : Array = [
 	"fog",
@@ -70,7 +78,6 @@ const FOG_COLOR_LIST : Array = [
 var fog_color_index : int = 0
 
 
-# Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	get_window().title = "DM Window"
 
@@ -107,55 +114,11 @@ func _ready() -> void:
 func update_brushes(value: int = 0) -> void:
 	brush_size = max(5, brush_size + value)
 	cursor_texture.size = Vector2(brush_size, brush_size)
-
-	light_brush = LightTexture.get_image()
-	dark_brush = DarkTexture.get_image()
-
-	var imglist = [light_brush, dark_brush]
-	for i in range(2):
-		imglist[i].resize(brush_size, brush_size)
-		imglist[i].convert(Image.FORMAT_RGBAH)
-
-
-func update_mask_wrapper(pos, erase: bool = false):
-	if prev_mouse_pos == null:
-		update_mask(pos, erase)
-		return
-
-	var distance = pos.distance_to(prev_mouse_pos)
-	var step_size = brush_size / 2
-
-	if distance > step_size:
-		var sub_steps = floor(distance / (step_size / 2))
-		var x_diff = pos.x - prev_mouse_pos.x
-		var y_diff = pos.y - prev_mouse_pos.y
-
-
-		for i in range(1, sub_steps + 1):
-			var sub_pos = pos
-			sub_pos.x -= (x_diff / sub_steps) * i
-			sub_pos.y -= (y_diff / sub_steps) * i
-			update_mask(sub_pos, erase)
-
-	update_mask(pos, erase)
-
-
-
-func update_mask(pos, erase: bool = false):
-	var offset = Vector2.ONE * brush_size / 2
-
-	if not erase:
-		mask_image.blend_rect(light_brush, light_brush.get_used_rect(), pos - offset)
-
-	if erase:
-		mask_image.blend_rect(dark_brush, dark_brush.get_used_rect(), pos - offset)
-
-	mask_texture = ImageTexture.create_from_image(mask_image)
-	dm_fog.material.set_shader_parameter('mask_texture', mask_texture)
-	player_fog.material.set_shader_parameter('mask_texture', mask_texture)
+	brush_size_changed.emit(brush_size)
 
 func _process(_delta):
 	cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+	mouse_pos = get_global_mouse_position()
 
 func _input(event: InputEvent) -> void:
 	if current_file_path == "":
@@ -202,20 +165,17 @@ func _input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton:
 		var pos = get_global_mouse_position()
+		mouse_pos = get_global_mouse_position()
 		if hovering_over_gui:
 			return
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			m1_held = event.pressed
-
-			if m1_held:
-				update_mask(pos)
+			m1.emit(event.pressed)
 
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			m2_held = event.pressed
-
-			if m2_held:
-				update_mask(pos, true)
+			m2.emit(event.pressed)
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			if shift_held:
@@ -225,15 +185,9 @@ func _input(event: InputEvent) -> void:
 			if shift_held:
 				update_brushes(5)
 
-		prev_mouse_pos = pos
-
 	elif event is InputEventMouseMotion:
-		var pos = get_global_mouse_position()
-		if m1_held:
-			update_mask_wrapper(pos)
-		elif m2_held:
-			update_mask_wrapper(pos, true)
-		prev_mouse_pos = pos
+		mouse_pos = get_global_mouse_position()
+		mouse_pos_signal.emit(mouse_pos)
 
 
 func update_fog_texture(color):
@@ -246,7 +200,7 @@ func update_fog_texture(color):
 		RenderingServer.set_default_clear_color(Color.WHITE)
 
 	else:
-		var fog_image = Image.create(map_image_width, map_image_height, false, Image.FORMAT_RGBAH)
+		var fog_image = Image.create(fog_image_width, fog_image_height, false, Image.FORMAT_RGBAH)
 		fog_image.fill(color)
 		fog_image_texture = ImageTexture.create_from_image(fog_image)
 		RenderingServer.set_default_clear_color(color)
@@ -254,6 +208,13 @@ func update_fog_texture(color):
 	player_fog.texture = fog_image_texture
 	dm_fog.texture = fog_image_texture
 
+func get_fog_size(image_size):
+	if image_size[0] > image_size[1]:
+		fog_image_width = image_size[0] * fog_scaling
+		fog_image_height = image_size[0] * fog_scaling
+	else:
+		fog_image_width = image_size[1] * fog_scaling
+		fog_image_height = image_size[1] * fog_scaling
 
 
 func load_map(path: String) -> void:
@@ -282,9 +243,6 @@ func load_map(path: String) -> void:
 		map_image.load_png_from_buffer(reader.read_file("map.png"))
 		map_image.convert(Image.FORMAT_RGBAH)
 
-		map_image_width = map_image.get_size()[0]
-		map_image_height = map_image.get_size()[1]
-
 		reader.close()
 
 	else:
@@ -292,34 +250,44 @@ func load_map(path: String) -> void:
 		map_image.load(path)
 		map_image.convert(Image.FORMAT_RGBAH)
 
-		map_image_width = map_image.get_size()[0]
-		map_image_height = map_image.get_size()[1]
+	get_fog_size(map_image.get_size())
 
 
-		mask_image = Image.create(map_image_width, map_image_height, false, Image.FORMAT_RGBAH)
-		mask_image.fill(Color(0, 0, 0, 1))
+	dm_fog.size = Vector2(fog_image_width, fog_image_height)
+	player_fog.size = Vector2(fog_image_width, fog_image_height)
+	drawing_viewport.size = Vector2(fog_image_width, fog_image_height)
 
-	mask_texture = ImageTexture.create_from_image(mask_image)
-	dm_fog.size = Vector2(map_image.get_size())
-	player_fog.size = Vector2(map_image.get_size())
+	dm_fog.material.set_shader_parameter('mask_texture', drawing_viewport.get_texture())
+	player_fog.material.set_shader_parameter('mask_texture', drawing_viewport.get_texture())
 
-	dm_fog.material.set_shader_parameter('mask_texture', mask_texture)
-	player_fog.material.set_shader_parameter('mask_texture', mask_texture)
+	dm_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
+	player_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
 
-	dm_camera.position = Vector2(map_image_width * 0.5, map_image_height * 0.5)
+	move_background(player_root)
+	move_background(dm_root)
 
-	player_camera.position = Vector2(map_image_width * 0.5, map_image_height * 0.5)
 
 	var image_texture = ImageTexture.new()
 	image_texture.set_image(map_image)
 	dm_background.texture = image_texture
 	player_background.texture = image_texture
 
+func move_background(background_node: Node2D):
+	var map_image_width = map_image.get_size()[0]
+	var map_image_height = map_image.get_size()[1]
+
+	var x_diff = fog_image_width - map_image_width
+	var y_diff = fog_image_height - map_image_height
+
+	background_node.position.x += x_diff / 2
+	background_node.position.y += y_diff / 2
+
+
 func write_map(path: String) -> void:
 	var writer = ZIPPacker.new()
 	writer.open(path)
 	writer.start_file("mask.png")
-	writer.write_file(mask_image.save_png_to_buffer())
+	writer.write_file(drawing_viewport.get_texture().get_image().save_png_to_buffer())
 	writer.start_file("map.png")
 	writer.write_file(map_image.save_png_to_buffer())
 	writer.close_file()

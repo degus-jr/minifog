@@ -6,6 +6,6 @@ void fragment() {
 	vec4 input_color = texture(TEXTURE, UV);
 	vec4 mask = texture(mask_texture, UV);
 
-    input_color.a = 0.5 - mask.r / 2.0;
+    input_color.a = 0.5 - (1.0 - mask.r) / 2.0;
 	COLOR = input_color;
 }

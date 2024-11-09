@@ -3,6 +3,7 @@ extends Control
 @onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
 @onready var settings_menu: PopupMenu = $GUI/MenuBar/Settings
+@onready var saving_label : Label = $GUI/SavingLabel
 @onready var colorscheme_menu: PopupMenu = $GUI/MenuBar/Colorscheme
 @onready var load_dialog: FileDialog = $LoadDialog
 @onready var save_dialog: FileDialog = $SaveDialog
@@ -12,6 +13,7 @@ extends Control
 
 @onready var drawing_viewport : SubViewport = $DrawingViewport
 @onready var drawing_node : Node2D = $DrawingViewport/DrawingNode
+@onready var drawing_texture = $DrawingViewport/DrawingTexture
 
 @onready var dm_camera: Camera2D = $Camera
 @onready var dm_fog = $DmFog
@@ -29,10 +31,18 @@ const PlasmaTexture = preload('res://resources/Plasma.jpg')
 
 const BlackIndicatorTexture = preload('res://resources/BlackIndicator.png')
 const WhiteIndicatorTexture = preload('res://resources/WhiteIndicator.png')
+const BlackSquareIndicatorTexture = preload('res://resources/BlackSquareIndicator.png')
+const WhiteSquareIndicatorTexture = preload('res://resources/WhiteSquareIndicator.png')
 
+
+var should_draw_square : bool = false
 var current_file_path : String
 
+signal square_signal(boolean)
+
 var fog_scaling : float = 1.2
+
+var mask_image_texture
 
 var hovering_over_gui : bool = false
 var black_circle_bool : bool = false
@@ -51,18 +61,18 @@ var mask_texture : ImageTexture
 var light_brush : Image
 var dark_brush : Image
 
-var m1_held: bool = false
-var m2_held: bool = false
 var shift_held : bool = false
 var ctrl_held : bool = false
+var m1_held : bool = false
+var m2_held : bool = false
 
-var prev_mouse_pos
-var mouse_pos = Vector2.ZERO
+var undo_list : Array = []
 
 signal m1(pressed)
 signal m2(pressed)
 signal mouse_pos_signal(position)
 signal brush_size_changed(size)
+signal pretend_to_draw
 
 const FOG_COLOR_LIST : Array = [
 	"fog",
@@ -77,13 +87,14 @@ const FOG_COLOR_LIST : Array = [
 
 var fog_color_index : int = 0
 
+const UNDO_LIST_MAX_SIZE : int = 10
+
 
 func _ready() -> void:
 	get_window().title = "DM Window"
 
 	load_dialog.connect("file_selected", func(path): load_map(path))
 	save_dialog.connect("file_selected", func(path): write_map(path))
-
 
 	file_menu.connect('id_pressed', _on_file_id_pressed)
 	settings_menu.connect('id_pressed', _on_settings_id_pressed)
@@ -118,7 +129,6 @@ func update_brushes(value: int = 0) -> void:
 
 func _process(_delta):
 	cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
-	mouse_pos = get_global_mouse_position()
 
 func _input(event: InputEvent) -> void:
 	if current_file_path == "":
@@ -134,13 +144,36 @@ func _input(event: InputEvent) -> void:
 			if event.keycode == KEY_Q:
 				get_tree().quit()
 
+			if event.keycode == KEY_L:
+				temp()
+
+			if event.keycode == KEY_Z:
+				if len(undo_list) > 1:
+					undo_list.pop_back()
+
+				drawing_texture.texture = undo_list[-1]
+				drawing_texture.visible = true
+				dm_fog.material.set_shader_parameter('mask_texture', undo_list[-1])
+				player_fog.material.set_shader_parameter('mask_texture', undo_list[-1])
+
+				pretend_to_draw.emit()
+
+				drawing_texture.texture = undo_list[-1]
+				drawing_texture.visible = true
+				dm_fog.material.set_shader_parameter('mask_texture', drawing_viewport.get_texture())
+				player_fog.material.set_shader_parameter('mask_texture', drawing_viewport.get_texture())
+
 			if event.keycode == KEY_C:
 				black_circle_bool = not black_circle_bool
 				settings_menu.set_item_checked(0, black_circle_bool)
-				if black_circle_bool:
-					cursor_texture.texture = BlackIndicatorTexture
-				else:
-					cursor_texture.texture = WhiteIndicatorTexture
+				set_cursor_texture()
+
+			if event.keycode == KEY_SPACE:
+				should_draw_square = not should_draw_square
+				settings_menu.set_item_checked(1, should_draw_square)
+				square_signal.emit(should_draw_square)
+				set_cursor_texture()
+
 
 
 			if event.keycode == KEY_T:
@@ -159,23 +192,34 @@ func _input(event: InputEvent) -> void:
 				if ctrl_held:
 					if current_file_path != "":
 						if current_file_path.ends_with('.map'):
+							saving_label.visible = true
+							await get_tree().process_frame
+							await get_tree().process_frame
 							write_map(current_file_path)
+							saving_label.visible = false
 						else:
 							save_dialog.popup()
 
 	if event is InputEventMouseButton:
-		var pos = get_global_mouse_position()
-		mouse_pos = get_global_mouse_position()
 		if hovering_over_gui:
 			return
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			m1_held = event.pressed
 			m1.emit(event.pressed)
+			drawing_texture.visible = false
+
+			if event.pressed == false:
+				copy_viewport_texture()
 
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			m2_held = event.pressed
 			m2.emit(event.pressed)
+			drawing_texture.visible = false
+
+			if event.pressed == false:
+				copy_viewport_texture()
+
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			if shift_held:
@@ -186,8 +230,43 @@ func _input(event: InputEvent) -> void:
 				update_brushes(5)
 
 	elif event is InputEventMouseMotion:
-		mouse_pos = get_global_mouse_position()
-		mouse_pos_signal.emit(mouse_pos)
+		if m1_held or m2_held:
+			drawing_texture.visible = false
+		mouse_pos_signal.emit(get_global_mouse_position())
+
+func set_cursor_texture() -> void:
+	if should_draw_square:
+		if black_circle_bool:
+			cursor_texture.texture = BlackSquareIndicatorTexture
+		else:
+			cursor_texture.texture = WhiteSquareIndicatorTexture
+	else:
+		if black_circle_bool:
+			cursor_texture.texture = BlackIndicatorTexture
+		else:
+			cursor_texture.texture = WhiteIndicatorTexture
+
+
+func copy_viewport_texture() -> void:
+	var image = drawing_viewport.get_texture().get_image()
+	var image_texture = ImageTexture.new()
+	image_texture = ImageTexture.create_from_image(image)
+	undo_list.append(image_texture)
+
+	if len(undo_list) > UNDO_LIST_MAX_SIZE:
+		undo_list.pop_front()
+
+func temp():
+	var writer = ZIPPacker.new()
+	writer.open('/home/jona/masks/masks.zip')
+
+	for i in range(len(undo_list)):
+		writer.start_file("%s.png" % i)
+		writer.write_file(undo_list[i].get_image().save_png_to_buffer())
+	writer.close_file()
+
+	writer.close()
+
 
 
 func update_fog_texture(color):
@@ -239,6 +318,12 @@ func load_map(path: String) -> void:
 		mask_image.load_png_from_buffer(reader.read_file("mask.png"))
 		mask_image.convert(Image.FORMAT_RGBAH)
 
+		mask_image_texture = ImageTexture.new()
+		mask_image_texture.set_image(mask_image)
+		drawing_texture.texture = mask_image_texture
+
+
+
 		map_image = Image.new()
 		map_image.load_png_from_buffer(reader.read_file("map.png"))
 		map_image.convert(Image.FORMAT_RGBAH)
@@ -249,10 +334,22 @@ func load_map(path: String) -> void:
 		map_image = Image.new()
 		map_image.load(path)
 		map_image.convert(Image.FORMAT_RGBAH)
+		get_fog_size(map_image.get_size())
+
+		mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_RGBAH)
+		mask_image.fill(Color.WHITE)
+
+		mask_image_texture = ImageTexture.create_from_image(mask_image)
+		drawing_texture.texture = mask_image_texture
 
 	get_fog_size(map_image.get_size())
 
+	undo_list.append(mask_image_texture)
 
+	drawing_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+
+	dm_fog.visible = true
+	player_fog.visible = true
 	dm_fog.size = Vector2(fog_image_width, fog_image_height)
 	player_fog.size = Vector2(fog_image_width, fog_image_height)
 	drawing_viewport.size = Vector2(fog_image_width, fog_image_height)
@@ -265,7 +362,6 @@ func load_map(path: String) -> void:
 
 	move_background(player_root)
 	move_background(dm_root)
-
 
 	var image_texture = ImageTexture.new()
 	image_texture.set_image(map_image)
@@ -318,12 +414,14 @@ func _on_settings_id_pressed(id: int) -> void:
 	if id == 0:
 		black_circle_bool = not black_circle_bool
 		settings_menu.set_item_checked(id, black_circle_bool)
-		if black_circle_bool:
-			cursor_texture.texture = BlackIndicatorTexture
-		else:
-			cursor_texture.texture = WhiteIndicatorTexture
+		set_cursor_texture()
 
 	if id == 1:
+		should_draw_square = not should_draw_square
+		settings_menu.set_item_checked(id, should_draw_square)
+		set_cursor_texture()
+
+	if id == 2:
 		performance_mode = not performance_mode
 		if performance_mode:
 			Engine.max_fps = 30

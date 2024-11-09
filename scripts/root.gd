@@ -418,6 +418,7 @@ func _on_settings_id_pressed(id: int) -> void:
 
 	if id == 1:
 		should_draw_square = not should_draw_square
+		square_signal.emit(should_draw_square)
 		settings_menu.set_item_checked(id, should_draw_square)
 		set_cursor_texture()
 

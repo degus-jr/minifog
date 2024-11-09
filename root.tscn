@@ -88,6 +88,7 @@ item_3/id = 3
 
 [node name="Colorscheme" type="PopupMenu" parent="GUI/MenuBar"]
 auto_translate_mode = 1
+title = "Hello"
 prefer_native_menu = true
 item_count = 8
 item_0/text = "Fog"
@@ -119,12 +120,12 @@ item_7/id = 7
 auto_translate_mode = 1
 prefer_native_menu = true
 item_count = 3
-item_0/text = "Flip circle colour"
+item_0/text = "Black Indicator Color (C to toggle)"
 item_0/checkable = 1
-item_1/text = "Square Brush"
+item_1/text = "Square Brush (Space to toggle)"
 item_1/checkable = 1
 item_1/id = 1
-item_2/text = "Limit FPS"
+item_2/text = "Limit FPS (P to toggle)"
 item_2/checkable = 1
 item_2/id = 2
 

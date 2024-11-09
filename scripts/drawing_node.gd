@@ -9,7 +9,7 @@ var m2_held: bool = false
 var brush_size: int = 50
 var pretend_to_draw: bool = false
 
-var should_draw_square: bool = true
+var should_draw_square: bool = false
 
 func _ready() -> void:
 	root = get_tree().root.get_child(0)
@@ -56,7 +56,6 @@ func _draw() -> void:
 				var points
 				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), Color(0, 1, 1, 1), true, -1.0, true)
 				var angle = mouse_pos.angle_to_point(prev_mouse_pos)
-				print(angle)
 				if (angle < 3.141592 and angle > 1.570796) or (angle < 0 and angle > -1.570796):
 					points = PackedVector2Array([
 						mouse_pos - Vector2.ONE * radius,

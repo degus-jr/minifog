@@ -81,7 +81,7 @@ const FOG_COLOR_LIST : Array = [
 	Color.WHITE,
 	Color.DARK_GRAY,
 	Color.FUCHSIA,
-	Color.MIDNIGHT_BLUE,
+	Color.BLUE,
 	Color.LIME,
 ]
 
@@ -404,7 +404,7 @@ func _on_file_id_pressed(id: int) -> void:
 
 	if id == 2:
 		warning.title = "Keybindings"
-		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan view\n    WASD/Arrow keys: Move view\n    Mouse wheel: Zoom\n    Shift+Mouse wheel: Resize brush\n    Ctrl+S: Save\nExtra keybinds\n    T: Toggle between fog themes\n    C: Change color of circle\n    P: Limit FPS"
+		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan view\n    WASD/Arrow keys: Move view\n    Mouse wheel: Zoom\n    Shift+Mouse wheel: Resize brush\n    Ctrl+S: Save\n    Ctrl+Z: Undo\nExtra keybinds\n    Space: Change brush type\n    C: Change color of size indicator\n    T: Toggle between fog themes\n    P: Limit FPS"
 		warning.popup_centered()
 
 	if id == 3:

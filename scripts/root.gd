@@ -142,7 +142,6 @@ func _input(event: InputEvent) -> void:
 
 		# schmoovement
 		if event.keycode == KEY_J:
-			print(event.pressed)
 			m1_held = event.pressed
 			m1.emit(event.pressed)
 			drawing_texture.visible = false
@@ -271,9 +270,7 @@ func set_cursor_texture() -> void:
 
 func copy_viewport_texture() -> void:
 	var image = drawing_viewport.get_texture().get_image()
-	print(image.get_format())
 	image.convert(Image.FORMAT_R8)
-	print(image.get_format())
 	var image_texture = ImageTexture.new()
 	image_texture = ImageTexture.create_from_image(image)
 	undo_list.append(image_texture)

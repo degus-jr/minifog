@@ -140,12 +140,28 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_CTRL:
 			ctrl_held = event.pressed
 
+		# schmoovement
+		if event.keycode == KEY_J:
+			print(event.pressed)
+			m1_held = event.pressed
+			m1.emit(event.pressed)
+			drawing_texture.visible = false
+
+			if event.pressed == false:
+				copy_viewport_texture()
+
+		if event.keycode == KEY_L:
+			m2_held = event.pressed
+			m2.emit(event.pressed)
+			drawing_texture.visible = false
+
+			if event.pressed == false:
+				copy_viewport_texture()
+
 		if event.pressed:
 			if event.keycode == KEY_Q:
 				get_tree().quit()
 
-			if event.keycode == KEY_L:
-				temp()
 
 			if event.keycode == KEY_Z:
 				if len(undo_list) > 1:
@@ -200,6 +216,12 @@ func _input(event: InputEvent) -> void:
 						else:
 							save_dialog.popup()
 
+
+			if event.keycode == KEY_K:
+				update_brushes(-5)
+			if event.keycode == KEY_I:
+				update_brushes(5)
+
 	if event is InputEventMouseButton:
 		if hovering_over_gui:
 			return
@@ -249,6 +271,9 @@ func set_cursor_texture() -> void:
 
 func copy_viewport_texture() -> void:
 	var image = drawing_viewport.get_texture().get_image()
+	print(image.get_format())
+	image.convert(Image.FORMAT_R8)
+	print(image.get_format())
 	var image_texture = ImageTexture.new()
 	image_texture = ImageTexture.create_from_image(image)
 	undo_list.append(image_texture)
@@ -279,7 +304,7 @@ func update_fog_texture(color):
 		RenderingServer.set_default_clear_color(Color.WHITE)
 
 	else:
-		var fog_image = Image.create(fog_image_width, fog_image_height, false, Image.FORMAT_RGBAH)
+		var fog_image = Image.create(fog_image_width, fog_image_height, false, Image.FORMAT_RGBA8)
 		fog_image.fill(color)
 		fog_image_texture = ImageTexture.create_from_image(fog_image)
 		RenderingServer.set_default_clear_color(color)
@@ -316,7 +341,7 @@ func load_map(path: String) -> void:
 		reader.open(path)
 		mask_image = Image.new()
 		mask_image.load_png_from_buffer(reader.read_file("mask.png"))
-		mask_image.convert(Image.FORMAT_RGBAH)
+		mask_image.convert(Image.FORMAT_R8)
 
 		mask_image_texture = ImageTexture.new()
 		mask_image_texture.set_image(mask_image)
@@ -326,18 +351,18 @@ func load_map(path: String) -> void:
 
 		map_image = Image.new()
 		map_image.load_png_from_buffer(reader.read_file("map.png"))
-		map_image.convert(Image.FORMAT_RGBAH)
+		map_image.convert(Image.FORMAT_RGB8)
 
 		reader.close()
 
 	else:
 		map_image = Image.new()
 		map_image.load(path)
-		map_image.convert(Image.FORMAT_RGBAH)
+		map_image.convert(Image.FORMAT_RGB8)
 		get_fog_size(map_image.get_size())
 
-		mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_RGBAH)
-		mask_image.fill(Color.WHITE)
+		mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_R8)
+		mask_image.fill(Color.RED)
 
 		mask_image_texture = ImageTexture.create_from_image(mask_image)
 		drawing_texture.texture = mask_image_texture

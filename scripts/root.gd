@@ -141,21 +141,22 @@ func _input(event: InputEvent) -> void:
 			ctrl_held = event.pressed
 
 		# schmoovement
-		if event.keycode == KEY_J:
-			m1_held = event.pressed
-			m1.emit(event.pressed)
-			drawing_texture.visible = false
 
-			if event.pressed == false:
-				copy_viewport_texture()
-
-		if event.keycode == KEY_L:
-			m2_held = event.pressed
-			m2.emit(event.pressed)
-			drawing_texture.visible = false
-
-			if event.pressed == false:
-				copy_viewport_texture()
+		# if event.keycode == KEY_J:
+		# 	m1_held = event.pressed
+		# 	m1.emit(event.pressed)
+		# 	drawing_texture.visible = false
+		#
+		# 	if event.pressed == false:
+		# 		copy_viewport_texture()
+		#
+		# if event.keycode == KEY_L:
+		# 	m2_held = event.pressed
+		# 	m2.emit(event.pressed)
+		# 	drawing_texture.visible = false
+		#
+		# 	if event.pressed == false:
+		# 		copy_viewport_texture()
 
 		if event.pressed:
 			if event.keycode == KEY_Q:
@@ -216,10 +217,10 @@ func _input(event: InputEvent) -> void:
 							save_dialog.popup()
 
 
-			if event.keycode == KEY_K:
-				update_brushes(-5)
-			if event.keycode == KEY_I:
-				update_brushes(5)
+			# if event.keycode == KEY_K:
+			# 	update_brushes(-5)
+			# if event.keycode == KEY_I:
+			# 	update_brushes(5)
 
 	if event is InputEventMouseButton:
 		if hovering_over_gui:

@@ -146,7 +146,7 @@ offset_bottom = 40.0
 
 [node name="PlayerWindow" type="Window" parent="."]
 title = "Player Window"
-initial_position = 2
+position = Vector2i(176, 74)
 size = Vector2i(800, 500)
 
 [node name="Camera" type="Camera2D" parent="PlayerWindow"]

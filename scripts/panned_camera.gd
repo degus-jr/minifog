@@ -49,10 +49,12 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and not shift_held:
 			target_zoom = min(target_zoom + ZOOM_INCREMENT, MAX_ZOOM)
 			zoom = Vector2.ONE * target_zoom
+			mouse_pos_signal.emit(get_global_mouse_position())
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and not shift_held:
 			target_zoom = max(target_zoom - ZOOM_INCREMENT, MIN_ZOOM)
 			zoom = Vector2.ONE * target_zoom
+			mouse_pos_signal.emit(get_global_mouse_position())
 
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_MIDDLE:

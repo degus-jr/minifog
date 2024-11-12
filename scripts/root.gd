@@ -41,11 +41,17 @@ const WhiteSquareIndicatorTexture = preload('res://resources/WhiteSquareIndicato
 const CircleIcon = preload('res://resources/CircleIcon.png')
 const SquareIcon = preload('res://resources/SquareIcon.png')
 
+const BRUSH_SIZE_MIN : int = 5
+const BRUSH_SIZE_MAX : int = 300
 
-var should_draw_square : bool = false
+enum TOOL {ROUND_BRUSH, SQUARE_BRUSH, SELECTOR, LENGTH}
+
+var tool_index : int = 0
+
+
 var current_file_path : String
 
-signal square_signal(boolean)
+signal tool_changed(index)
 
 var fog_scaling : float = 1.2
 
@@ -72,6 +78,8 @@ var shift_held : bool = false
 var ctrl_held : bool = false
 var m1_held : bool = false
 var m2_held : bool = false
+
+var in_sidebar : bool = false
 
 var undo_list : Array = []
 
@@ -108,13 +116,20 @@ func _ready() -> void:
 	settings_menu.connect('id_pressed', _on_settings_id_pressed)
 	colorscheme_menu.connect('id_pressed', update_colorscheme)
 
-	button.connect('pressed', on_button_pressed)
+	button.connect('pressed', change_tool)
 
+	button.connect('mouse_exited', button.release_focus)
+	scrollbar.set_value_no_signal(brush_size)
 
 	var gui_list = [menu_bar, file_menu, settings_menu,  colorscheme_menu, sidebar, scrollbar, button]
 	for i in range(len(gui_list)):
 		gui_list[i].connect("mouse_entered", func(): hovering_over_gui = true)
 		gui_list[i].connect("mouse_exited", func(): hovering_over_gui = false)
+
+	var sidebar_list = [sidebar, scrollbar, button]
+	for i in range(len(sidebar_list)):
+		sidebar_list[i].connect("mouse_entered", func(): in_sidebar = true)
+		sidebar_list[i].connect("mouse_exited", func(): in_sidebar = false)
 
 	load_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images / .map files")
 	save_dialog.add_filter("*.map", ".map files")
@@ -131,13 +146,13 @@ func _ready() -> void:
 	else:
 		load_dialog.popup()
 
-func on_button_pressed():
-	should_draw_square = not should_draw_square
-	square_signal.emit(should_draw_square)
+func change_tool():
+	tool_index = (tool_index + 1) % TOOL.LENGTH
+	tool_changed.emit(tool_index)
 	set_cursor_texture()
-	if should_draw_square:
+	if tool_index == TOOL.SQUARE_BRUSH:
 		button.icon = SquareIcon
-	else:
+	elif tool_index == TOOL.ROUND_BRUSH:
 		button.icon = CircleIcon
 
 
@@ -148,12 +163,15 @@ func on_scrollbar_value_changed(value: float):
 
 
 func update_brushes(value: int = 0) -> void:
-	brush_size = max(5, brush_size + value)
+	brush_size = min(max(BRUSH_SIZE_MIN, brush_size + value), BRUSH_SIZE_MAX)
 	cursor_texture.size = Vector2(brush_size, brush_size)
 	brush_size_changed.emit(brush_size)
 
 func _process(_delta):
-	cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+	if in_sidebar:
+		cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
+	else:
+		cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
 
 func _input(event: InputEvent) -> void:
 	if current_file_path == "":
@@ -210,10 +228,7 @@ func _input(event: InputEvent) -> void:
 				set_cursor_texture()
 
 			if event.keycode == KEY_SPACE:
-				should_draw_square = not should_draw_square
-				settings_menu.set_item_checked(1, should_draw_square)
-				square_signal.emit(should_draw_square)
-				set_cursor_texture()
+				change_tool()
 
 
 
@@ -251,6 +266,9 @@ func _input(event: InputEvent) -> void:
 		if hovering_over_gui:
 			return
 
+		if tool_index == TOOL.SELECTOR:
+			pass
+
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			m1_held = event.pressed
 			m1.emit(event.pressed)
@@ -271,10 +289,12 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			if shift_held:
 				update_brushes(-5)
+				scrollbar.set_value_no_signal(brush_size)
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			if shift_held:
 				update_brushes(5)
+				scrollbar.set_value_no_signal(brush_size)
 
 	elif event is InputEventMouseMotion:
 		if m1_held or m2_held:
@@ -282,16 +302,20 @@ func _input(event: InputEvent) -> void:
 		mouse_pos_signal.emit(get_global_mouse_position())
 
 func set_cursor_texture() -> void:
-	if should_draw_square:
+	if tool_index == TOOL.SQUARE_BRUSH:
+		cursor_texture.visible = true
 		if black_circle_bool:
 			cursor_texture.texture = BlackSquareIndicatorTexture
 		else:
 			cursor_texture.texture = WhiteSquareIndicatorTexture
-	else:
+	elif tool_index == TOOL.ROUND_BRUSH:
+		cursor_texture.visible = true
 		if black_circle_bool:
 			cursor_texture.texture = BlackIndicatorTexture
 		else:
 			cursor_texture.texture = WhiteIndicatorTexture
+	elif tool_index == TOOL.SELECTOR:
+		cursor_texture.visible = false
 
 
 func copy_viewport_texture() -> void:
@@ -462,12 +486,6 @@ func _on_settings_id_pressed(id: int) -> void:
 	if id == 0:
 		black_circle_bool = not black_circle_bool
 		settings_menu.set_item_checked(id, black_circle_bool)
-		set_cursor_texture()
-
-	if id == 1:
-		should_draw_square = not should_draw_square
-		square_signal.emit(should_draw_square)
-		settings_menu.set_item_checked(id, should_draw_square)
 		set_cursor_texture()
 
 	if id == 2:

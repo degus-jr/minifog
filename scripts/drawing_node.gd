@@ -12,6 +12,8 @@ var pretend_to_draw: bool = false
 @onready var panned_camera : Camera2D = get_node('/root/Root/Camera')
 
 var should_draw_square: bool = false
+var tool_index : int = 0
+enum TOOL {ROUND_BRUSH, SQUARE_BRUSH, SELECTOR, LENGTH}
 
 func _ready() -> void:
 	# root = get_tree().root.get_child(0)
@@ -20,7 +22,7 @@ func _ready() -> void:
 	root.connect('brush_size_changed', func(size): brush_size = size)
 	root.connect('mouse_pos_signal', func(mouse_pos_signal): mouse_pos = mouse_pos_signal)
 	root.connect('pretend_to_draw', fake_drawing)
-	root.connect('square_signal', func(boolean): should_draw_square = boolean)
+	root.connect('tool_changed', func(index): tool_index = index)
 	panned_camera.connect('mouse_pos_signal', func(mouse_pos_signal): mouse_pos = mouse_pos_signal)
 
 func _draw() -> void:
@@ -41,53 +43,55 @@ func _draw() -> void:
 
 	if prev_mouse_pos == Vector2.ZERO:
 		if m1_held:
-			if not should_draw_square:
+			if tool_index == TOOL.ROUND_BRUSH:
 				draw_circle(mouse_pos, radius, Color(0, 0, 0, 1), true, -1.0, false)
-			else:
+			elif tool_index == TOOL.SQUARE_BRUSH:
 				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), Color(0, 1, 1, 1), true, -1.0, true)
 		elif m2_held:
 			if not should_draw_square:
 				draw_circle(mouse_pos, radius, Color(1, 0, 0, 1), true, -1.0, true)
 			else:
-				draw_rect(Rect2(mouse_pos, Vector2(width, width)), Color(1, 1, 1, 1), true, -1.0, true)
+				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), Color(1, 1, 1, 1), true, -1.0, true)
 	else:
-		if m1_held:
-			if not should_draw_square:
+		if tool_index == TOOL.ROUND_BRUSH:
+			if m1_held:
 				draw_circle(mouse_pos, radius, Color(0, 0, 0, 1), true, -1.0, true)
 				draw_line(mouse_pos, prev_mouse_pos, Color(0, 0, 0, 1), width, true)
-			else:
-				var points
-				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), Color(0, 0, 0, 1), true, -1.0, true)
-				var angle = mouse_pos.angle_to_point(prev_mouse_pos)
-				if (angle < 3.141592 and angle > 1.570796) or (angle < 0 and angle > -1.570796):
-					points = PackedVector2Array([
-						mouse_pos - Vector2.ONE * radius,
-						mouse_pos + Vector2.ONE * radius,
-						prev_mouse_pos + Vector2.ONE * radius,
-						prev_mouse_pos - Vector2.ONE * radius,
-					])
-
-				else:
-					points = [
-						[mouse_pos.x - radius, mouse_pos.y + radius],
-						[mouse_pos.x + radius, mouse_pos.y - radius],
-						[prev_mouse_pos.x + radius, prev_mouse_pos.y - radius],
-						[prev_mouse_pos.x - radius, prev_mouse_pos.y + radius],
-					]
-					points = PackedVector2Array([
-						mouse_pos + Vector2(-radius, radius),
-						mouse_pos + Vector2(radius, -radius),
-						prev_mouse_pos + Vector2(radius, -radius),
-						prev_mouse_pos + Vector2(-radius, radius)
-					])
-				draw_colored_polygon(points, Color(0, 0, 0, 1))
-		elif m2_held:
-			if not should_draw_square:
+			elif m2_held:
 				draw_circle(mouse_pos, radius, Color(1, 0, 0, 1), true, -1.0, true)
 				draw_line(mouse_pos, prev_mouse_pos, Color(1, 0, 0, 1), width, true)
+		elif tool_index == TOOL.SQUARE_BRUSH:
+			var points
+			var angle = mouse_pos.angle_to_point(prev_mouse_pos)
+
+			if (angle < 3.141592 and angle > 1.570796) or (angle < 0 and angle > -1.570796):
+				points = PackedVector2Array([
+					mouse_pos - Vector2.ONE * radius,
+					mouse_pos + Vector2.ONE * radius,
+					prev_mouse_pos + Vector2.ONE * radius,
+					prev_mouse_pos - Vector2.ONE * radius,
+				])
+
 			else:
-				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), Color(1, 1, 1, 1), true, -1.0, true)
-				draw_line(mouse_pos, prev_mouse_pos, Color(1, 0, 0, 1), width, true)
+				points = [
+					[mouse_pos.x - radius, mouse_pos.y + radius],
+					[mouse_pos.x + radius, mouse_pos.y - radius],
+					[prev_mouse_pos.x + radius, prev_mouse_pos.y - radius],
+					[prev_mouse_pos.x - radius, prev_mouse_pos.y + radius],
+				]
+				points = PackedVector2Array([
+					mouse_pos + Vector2(-radius, radius),
+					mouse_pos + Vector2(radius, -radius),
+					prev_mouse_pos + Vector2(radius, -radius),
+					prev_mouse_pos + Vector2(-radius, radius)
+				])
+
+			if m1_held:
+				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), Color(0, 0, 0, 1), true, -1.0, true)
+				draw_colored_polygon(points, Color(0, 0, 0, 1))
+			elif m2_held:
+				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), Color(1, 0, 0, 1), true, -1.0, true)
+				draw_colored_polygon(points, Color(1, 0, 0, 1))
 
 	prev_mouse_pos = mouse_pos
 

@@ -15,7 +15,7 @@ var selector_erase : bool
 
 var should_draw_square: bool = false
 var tool_index : int = 0
-enum TOOL {SELECTOR, SQUARE_BRUSH, ROUND_BRUSH, LENGTH}
+enum TOOL {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
 
 var selector = false
 var selector_end_pos : Vector2

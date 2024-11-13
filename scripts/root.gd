@@ -48,7 +48,7 @@ const MAX_IMAGE_SIZE : float = 3000.0
 
 const CORNER_BASE_SIZE : int = 16
 
-enum TOOL {SELECTOR, SQUARE_BRUSH, ROUND_BRUSH, LENGTH}
+enum TOOL {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
 
 var tool_index : int = 0
 
@@ -133,6 +133,8 @@ func _ready() -> void:
 	scrollbar.set_value_no_signal(brush_size)
 
 	set_cursor_texture()
+	tool_index = -1
+	change_tool()
 
 	for i in range(4):
 		var node = Node2D.new()

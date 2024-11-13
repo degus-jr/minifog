@@ -2,18 +2,18 @@ extends Control
 
 @onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
-@onready var settings_menu: PopupMenu = $GUI/MenuBar/Settings
 @onready var saving_label : Label = $GUI/SavingLabel
 @onready var colorscheme_menu: PopupMenu = $GUI/MenuBar/Colorscheme
+@onready var sidebar : PanelContainer = $GUI/PanelContainer
+@onready var scrollbar : VScrollBar = $GUI/PanelContainer/VBoxContainer/VScrollBar
+@onready var button : Button = $GUI/PanelContainer/VBoxContainer/Button
+@onready var tool_label : Label = $GUI/PanelContainer/VBoxContainer/ToolLabel
+
 @onready var load_dialog: FileDialog = $LoadDialog
 @onready var save_dialog: FileDialog = $SaveDialog
 @onready var warning: AcceptDialog = $Warning
 @onready var cursor_node : Node2D = $CursorNode
 @onready var cursor_texture : TextureRect = $CursorNode/TextureRect
-@onready var sidebar : PanelContainer = $GUI/PanelContainer
-
-@onready var scrollbar : VScrollBar = $GUI/PanelContainer/VBoxContainer/VScrollBar
-@onready var button : Button = $GUI/PanelContainer/VBoxContainer/Button
 
 @onready var drawing_viewport : SubViewport = $DrawingViewport
 @onready var drawing_node : Node2D = $DrawingViewport/DrawingNode
@@ -33,10 +33,8 @@ extends Control
 const PerlinTexture = preload('res://resources/Fog.jpg')
 const PlasmaTexture = preload('res://resources/Plasma.jpg')
 
-const BlackIndicatorTexture = preload('res://resources/BlackIndicator.png')
-const WhiteIndicatorTexture = preload('res://resources/WhiteIndicator.png')
-const BlackSquareIndicatorTexture = preload('res://resources/BlackSquareIndicator.png')
-const WhiteSquareIndicatorTexture = preload('res://resources/WhiteSquareIndicator.png')
+const SquareIndicatorTexture = preload('res://resources/SquareIndicator.png')
+const CircleIndicatorTexture = preload('res://resources/CircleIndicator.png')
 const CornerTexture = preload('res://resources/Corner.png')
 
 const CircleIcon = preload('res://resources/CircleIcon.png')
@@ -48,9 +46,9 @@ const BRUSH_SIZE_MAX : int = 500
 
 const MAX_IMAGE_SIZE : float = 3000.0
 
-const CORNER_BASE_SIZE : int = 32
+const CORNER_BASE_SIZE : int = 16
 
-enum TOOL {ROUND_BRUSH, SQUARE_BRUSH, SELECTOR, LENGTH}
+enum TOOL {SELECTOR, SQUARE_BRUSH, ROUND_BRUSH, LENGTH}
 
 var tool_index : int = 0
 
@@ -71,7 +69,6 @@ var fog_scaling : float = 1.2
 var mask_image_texture
 
 var hovering_over_gui : bool = false
-var black_circle_bool : bool = false
 var performance_mode : bool = false
 
 var brush_size : int = 50
@@ -128,13 +125,14 @@ func _ready() -> void:
 	scrollbar.connect('value_changed', on_scrollbar_value_changed)
 
 	file_menu.connect('id_pressed', _on_file_id_pressed)
-	settings_menu.connect('id_pressed', _on_settings_id_pressed)
 	colorscheme_menu.connect('id_pressed', update_colorscheme)
 
 	button.connect('pressed', change_tool)
 
 	button.connect('mouse_exited', button.release_focus)
 	scrollbar.set_value_no_signal(brush_size)
+
+	set_cursor_texture()
 
 	for i in range(4):
 		var node = Node2D.new()
@@ -146,7 +144,7 @@ func _ready() -> void:
 		node.add_child(texture)
 		corner_list.append(texture)
 
-	var gui_list = [menu_bar, file_menu, settings_menu,  colorscheme_menu, sidebar, scrollbar, button]
+	var gui_list = [menu_bar, file_menu,  colorscheme_menu, sidebar, scrollbar, button]
 	for i in range(len(gui_list)):
 		gui_list[i].connect("mouse_entered", func(): hovering_over_gui = true)
 		gui_list[i].connect("mouse_exited", func(): hovering_over_gui = false)
@@ -160,7 +158,6 @@ func _ready() -> void:
 	save_dialog.add_filter("*.map", ".map files")
 	update_brushes()
 
-	cursor_texture.texture = WhiteIndicatorTexture
 	cursor_texture.size = Vector2(brush_size, brush_size)
 
 	var args = OS.get_cmdline_args()
@@ -177,10 +174,13 @@ func change_tool():
 	set_cursor_texture()
 	if tool_index == TOOL.SQUARE_BRUSH:
 		button.icon = SquareIcon
+		tool_label.text = "Square brush"
 	elif tool_index == TOOL.ROUND_BRUSH:
 		button.icon = CircleIcon
+		tool_label.text = "Round brush"
 	elif tool_index == TOOL.SELECTOR:
 		button.icon = SelectorIcon
+		tool_label.text = "Selector"
 
 
 func on_scrollbar_value_changed(value: float):
@@ -305,11 +305,6 @@ func _input(event: InputEvent) -> void:
 				dm_fog.material.set_shader_parameter('mask_texture', drawing_viewport.get_texture())
 				player_fog.material.set_shader_parameter('mask_texture', drawing_viewport.get_texture())
 
-			if event.keycode == KEY_C:
-				black_circle_bool = not black_circle_bool
-				settings_menu.set_item_checked(0, black_circle_bool)
-				set_cursor_texture()
-
 			if event.keycode == KEY_SPACE:
 				change_tool()
 
@@ -325,7 +320,6 @@ func _input(event: InputEvent) -> void:
 					Engine.max_fps = 30
 				else:
 					Engine.max_fps = 60
-				settings_menu.set_item_checked(1, performance_mode)
 
 			if event.keycode == KEY_S:
 				if ctrl_held:
@@ -405,16 +399,10 @@ func _input(event: InputEvent) -> void:
 func set_cursor_texture() -> void:
 	if tool_index == TOOL.SQUARE_BRUSH:
 		cursor_texture.visible = true
-		if black_circle_bool:
-			cursor_texture.texture = BlackSquareIndicatorTexture
-		else:
-			cursor_texture.texture = WhiteSquareIndicatorTexture
+		cursor_texture.texture = SquareIndicatorTexture
 	elif tool_index == TOOL.ROUND_BRUSH:
 		cursor_texture.visible = true
-		if black_circle_bool:
-			cursor_texture.texture = BlackIndicatorTexture
-		else:
-			cursor_texture.texture = WhiteIndicatorTexture
+		cursor_texture.texture = CircleIndicatorTexture
 	elif tool_index == TOOL.SELECTOR:
 		cursor_texture.visible = false
 
@@ -599,25 +587,6 @@ func _on_file_id_pressed(id: int) -> void:
 
 	if id == 3:
 		get_tree().quit()
-
-# func _draw():
-# 	print('here')
-# 	# draw_circle(, 300, Color.RED, true, -1.0, true)
-# 	draw_rect(Rect2(selector_start_pos, get_global_mouse_position() - selector_start_pos), Color(0, 0, 0, 1), true, -1.0, true)
-
-func _on_settings_id_pressed(id: int) -> void:
-	if id == 0:
-		black_circle_bool = not black_circle_bool
-		settings_menu.set_item_checked(id, black_circle_bool)
-		set_cursor_texture()
-
-	if id == 2:
-		performance_mode = not performance_mode
-		if performance_mode:
-			Engine.max_fps = 30
-		else:
-			Engine.max_fps = 60
-		settings_menu.set_item_checked(id, performance_mode)
 
 func update_colorscheme(id: int) -> void:
 	if current_file_path == "":

@@ -170,9 +170,6 @@ func _ready() -> void:
 	if len(args) > 0:
 		load_map(args[0])
 
-	else:
-		load_dialog.popup()
-
 func are_we_inside_sidebar():
 	if m1_held or m2_held:
 		return
@@ -277,24 +274,6 @@ func _input(event: InputEvent) -> void:
 		if event.keycode == KEY_CTRL:
 			ctrl_held = event.pressed
 
-		# schmoovement
-
-		# if event.keycode == KEY_J:
-		# 	m1_held = event.pressed
-		# 	m1.emit(event.pressed)
-		# 	drawing_texture.visible = false
-		#
-		# 	if event.pressed == false:
-		# 		copy_viewport_texture()
-		#
-		# if event.keycode == KEY_L:
-		# 	m2_held = event.pressed
-		# 	m2.emit(event.pressed)
-		# 	drawing_texture.visible = false
-		#
-		# 	if event.pressed == false:
-		# 		copy_viewport_texture()
-
 		if event.pressed:
 			if event.keycode == KEY_Q:
 				get_tree().quit()
@@ -345,51 +324,44 @@ func _input(event: InputEvent) -> void:
 							save_dialog.popup()
 
 
-			# if event.keycode == KEY_K:
-			# 	update_brushes(-5)
-			# if event.keycode == KEY_I:
-			# 	update_brushes(5)
-
 	if event is InputEventMouseButton:
-		if hovering_over_gui:
-			return
 
 		if tool_index == TOOL.SELECTOR:
-			if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 				if event.pressed:
+					if hovering_over_gui:
+						return
 					selecting = true
 					selector_start_pos = get_global_mouse_position()
 				else:
-					selecting = false
-					selector_end_pos = get_global_mouse_position()
-					selector_finished.emit(selector_start_pos, selector_end_pos)
-
-			if event.button_index == MOUSE_BUTTON_RIGHT:
-				if event.pressed:
-					selecting = true
-					selector_start_pos = get_global_mouse_position()
-				else:
-					selecting = false
-					selector_end_pos = get_global_mouse_position()
-					selector_finished.emit(selector_start_pos, selector_end_pos)
-
+					if m1_held or m2_held:
+						selecting = false
+						selector_end_pos = get_global_mouse_position()
+						selector_finished.emit(selector_start_pos, selector_end_pos)
 
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
+			if hovering_over_gui and event.pressed:
+				return
+			drawing_texture.visible = false
+
+			print(m1_held)
+			if event.pressed == false and m1_held:
+				copy_viewport_texture()
 			m1_held = event.pressed
 			m1.emit(event.pressed)
-			drawing_texture.visible = false
-
-			if event.pressed == false:
-				copy_viewport_texture()
 
 		if event.button_index == MOUSE_BUTTON_RIGHT:
-			m2_held = event.pressed
-			m2.emit(event.pressed)
+			if hovering_over_gui and event.pressed:
+				return
 			drawing_texture.visible = false
 
-			if event.pressed == false:
+			if event.pressed == false and m2_held:
+				print(m2_held)
 				copy_viewport_texture()
+
+			m2_held = event.pressed
+			m2.emit(event.pressed)
 
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:

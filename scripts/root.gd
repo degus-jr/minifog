@@ -8,6 +8,9 @@ extends Control
 @onready var scrollbar : VScrollBar = $GUI/PanelContainer/VBoxContainer/VScrollBar
 @onready var button : Button = $GUI/PanelContainer/VBoxContainer/Button
 @onready var tool_label : Label = $GUI/PanelContainer/VBoxContainer/ToolLabel
+@onready var info_degus : TextureRect = $InfoDegus
+
+@onready var text : TextEdit = $TextEdit
 
 @onready var load_dialog: FileDialog = $LoadDialog
 @onready var save_dialog: FileDialog = $SaveDialog
@@ -153,7 +156,7 @@ func _ready() -> void:
 
 	var sidebar_list = [sidebar, scrollbar, button]
 	for i in range(len(sidebar_list)):
-		sidebar_list[i].connect("mouse_entered", func(): in_sidebar = true)
+		sidebar_list[i].connect("mouse_entered", are_we_inside_sidebar)
 		sidebar_list[i].connect("mouse_exited", func(): in_sidebar = false)
 
 	load_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images / .map files")
@@ -169,6 +172,12 @@ func _ready() -> void:
 
 	else:
 		load_dialog.popup()
+
+func are_we_inside_sidebar():
+	if m1_held or m2_held:
+		return
+	else:
+		in_sidebar = true
 
 func change_tool():
 	tool_index = (tool_index + 1) % TOOL.LENGTH
@@ -503,13 +512,11 @@ func load_map(path: String) -> void:
 
 		if map_image_width > MAX_IMAGE_SIZE or map_image_height > MAX_IMAGE_SIZE:
 			var ratio : float
-			print(map_image_width)
 			if map_image_width > map_image_height:
 				ratio = MAX_IMAGE_SIZE / map_image_width
 			else:
 				ratio = MAX_IMAGE_SIZE / map_image_height
 
-			print(ratio)
 
 			map_image.resize(map_image_width * ratio, map_image_height * ratio, Image.Interpolation.INTERPOLATE_CUBIC)
 
@@ -548,6 +555,11 @@ func load_map(path: String) -> void:
 	dm_background.texture = image_texture
 	player_background.texture = image_texture
 
+	if is_instance_valid(text):
+		text.queue_free()
+	if is_instance_valid(info_degus):
+		info_degus.queue_free()
+
 func move_background(background_node: Node2D):
 	var map_image_width = map_image.get_size()[0]
 	var map_image_height = map_image.get_size()[1]
@@ -555,8 +567,8 @@ func move_background(background_node: Node2D):
 	var x_diff = fog_image_width - map_image_width
 	var y_diff = fog_image_height - map_image_height
 
-	background_node.position.x += x_diff / 2
-	background_node.position.y += y_diff / 2
+	background_node.position.x = x_diff / 2
+	background_node.position.y = y_diff / 2
 
 
 func write_map(path: String) -> void:

@@ -8,6 +8,8 @@ var m2_held: bool = false
 var brush_size: int = 50
 var pretend_to_draw: bool = false
 
+signal finished
+
 var selector_erase : bool
 
 @onready var root : Control = get_node('/root/Root')
@@ -45,6 +47,7 @@ func _draw() -> void:
 	if selector:
 		draw_rect(Rect2(selector_start_pos, selector_end_pos - selector_start_pos), color, true, -1.0, true)
 		selector = false
+		finished.emit()
 
 	if mouse_pos == prev_mouse_pos:
 		return

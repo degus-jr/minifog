@@ -135,6 +135,8 @@ func _ready() -> void:
 	button.connect('mouse_exited', button.release_focus)
 	scrollbar.set_value_no_signal(brush_size)
 
+	drawing_node.connect('finished', wait_one_frame_and_then_copy)
+
 	set_cursor_texture()
 	tool_index = -1
 	change_tool()
@@ -169,6 +171,10 @@ func _ready() -> void:
 
 	if len(args) > 0:
 		load_map(args[0])
+
+func wait_one_frame_and_then_copy():
+	await RenderingServer.frame_post_draw
+	copy_viewport_texture()
 
 func are_we_inside_sidebar():
 	if m1_held or m2_held:
@@ -207,6 +213,8 @@ func _process(_delta):
 		cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
 	else:
 		cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+
+	# print(len(undo_list))
 
 	corner_stuff()
 
@@ -269,6 +277,8 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			if event.keycode == KEY_L:
 				load_dialog.popup()
+			if event.keycode == KEY_U:
+				temp()
 	if current_file_path == "":
 		return
 
@@ -338,14 +348,19 @@ func _input(event: InputEvent) -> void:
 						return
 					selecting = true
 					selector_start_pos = get_global_mouse_position()
-				else:
+
+				if event.pressed == false:
 					if m1_held or m2_held:
-						# if selecting:
-						# 	print('copyiing')
-						# 	copy_viewport_texture()
 						selecting = false
 						selector_end_pos = get_global_mouse_position()
 						selector_finished.emit(selector_start_pos, selector_end_pos)
+				if event.button_index == MOUSE_BUTTON_LEFT:
+					m1_held = event.pressed
+					m1.emit(event.pressed)
+				elif event.button_index == MOUSE_BUTTON_RIGHT:
+					m2_held = event.pressed
+					m2.emit(event.pressed)
+			return
 
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -354,7 +369,6 @@ func _input(event: InputEvent) -> void:
 			drawing_texture.visible = false
 
 			if event.pressed == false and m1_held:
-				print('copyiing here')
 				copy_viewport_texture()
 			m1_held = event.pressed
 			m1.emit(event.pressed)
@@ -403,7 +417,6 @@ func copy_viewport_texture() -> void:
 	var image_texture = ImageTexture.new()
 	image_texture = ImageTexture.create_from_image(image)
 	undo_list.append(image_texture)
-	print(len(undo_list))
 
 	if len(undo_list) > UNDO_LIST_MAX_SIZE:
 		undo_list.pop_front()

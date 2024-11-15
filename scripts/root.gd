@@ -265,6 +265,10 @@ func corner_stuff():
 		corner_list[3].position.y = mouse_pos.y - width
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		if event.pressed:
+			if event.keycode == KEY_L:
+				load_dialog.popup()
 	if current_file_path == "":
 		return
 
@@ -273,6 +277,7 @@ func _input(event: InputEvent) -> void:
 			shift_held = event.pressed
 		if event.keycode == KEY_CTRL:
 			ctrl_held = event.pressed
+
 
 		if event.pressed:
 			if event.keycode == KEY_Q:
@@ -335,6 +340,9 @@ func _input(event: InputEvent) -> void:
 					selector_start_pos = get_global_mouse_position()
 				else:
 					if m1_held or m2_held:
+						# if selecting:
+						# 	print('copyiing')
+						# 	copy_viewport_texture()
 						selecting = false
 						selector_end_pos = get_global_mouse_position()
 						selector_finished.emit(selector_start_pos, selector_end_pos)
@@ -345,8 +353,8 @@ func _input(event: InputEvent) -> void:
 				return
 			drawing_texture.visible = false
 
-			print(m1_held)
 			if event.pressed == false and m1_held:
+				print('copyiing here')
 				copy_viewport_texture()
 			m1_held = event.pressed
 			m1.emit(event.pressed)
@@ -357,7 +365,6 @@ func _input(event: InputEvent) -> void:
 			drawing_texture.visible = false
 
 			if event.pressed == false and m2_held:
-				print(m2_held)
 				copy_viewport_texture()
 
 			m2_held = event.pressed
@@ -396,6 +403,7 @@ func copy_viewport_texture() -> void:
 	var image_texture = ImageTexture.new()
 	image_texture = ImageTexture.create_from_image(image)
 	undo_list.append(image_texture)
+	print(len(undo_list))
 
 	if len(undo_list) > UNDO_LIST_MAX_SIZE:
 		undo_list.pop_front()

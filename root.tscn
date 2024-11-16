@@ -474,7 +474,7 @@ label_settings = SubResource("LabelSettings_womdi")
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -124.0
+offset_left = -104.0
 offset_top = 12.0
 offset_right = -25.0
 offset_bottom = 419.0
@@ -539,7 +539,6 @@ offset_bottom = 40.0
 title = "Player Window"
 position = Vector2i(0, 36)
 size = Vector2i(800, 500)
-visible = false
 
 [node name="Camera" type="Camera2D" parent="PlayerWindow"]
 script = ExtResource("2_krtgi")

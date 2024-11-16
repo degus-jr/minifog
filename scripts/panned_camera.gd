@@ -45,12 +45,12 @@ func _input(event: InputEvent) -> void:
 			right_held = event.pressed
 
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP and not shift_held:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and not ctrl_held:
 			target_zoom = min(target_zoom + ZOOM_INCREMENT, MAX_ZOOM)
 			zoom = Vector2.ONE * target_zoom
 			on_mouse_pos_changed.emit(get_global_mouse_position())
 
-		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and not shift_held:
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and not ctrl_held:
 			target_zoom = max(target_zoom - ZOOM_INCREMENT, MIN_ZOOM)
 			zoom = Vector2.ONE * target_zoom
 			on_mouse_pos_changed.emit(get_global_mouse_position())

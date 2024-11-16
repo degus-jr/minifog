@@ -39,7 +39,7 @@ const FOG_COLOR_LIST : Array = [
 	Color.LIME,
 ]
 
-const UNDO_LIST_MAX_SIZE : int = 10
+const UNDO_LIST_MAX_SIZE : int = 15
 
 var tool_index : int = 0
 var fog_color_index : int = 0
@@ -47,7 +47,6 @@ var brush_size : int = 50
 var fog_image_height : int
 var fog_image_width : int
 
-var shift_held := false
 var ctrl_held := false
 var m1_held := false
 var m2_held := false
@@ -77,11 +76,13 @@ var dark_brush : Image
 
 @onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
+@onready var help_menu: PopupMenu = $GUI/MenuBar/Help
 @onready var saving_label : Label = $GUI/SavingLabel
 @onready var colorscheme_menu: PopupMenu = $GUI/MenuBar/Colorscheme
 @onready var sidebar : PanelContainer = $GUI/PanelContainer
 @onready var scrollbar : VScrollBar = $GUI/PanelContainer/VBoxContainer/VScrollBar
 @onready var button : Button = $GUI/PanelContainer/VBoxContainer/Button
+@onready var separator : HSeparator = $GUI/PanelContainer/VBoxContainer/Separator
 @onready var tool_label : Label = $GUI/PanelContainer/VBoxContainer/ToolLabel
 @onready var info_degus : TextureRect = $InfoDegus
 
@@ -117,6 +118,7 @@ func _ready() -> void:
 	scrollbar.connect('value_changed', on_scrollbar_value_changed)
 
 	file_menu.connect('id_pressed', _on_file_id_pressed)
+	help_menu.connect('id_pressed', _on_help_id_pressed)
 	colorscheme_menu.connect('id_pressed', update_colorscheme)
 
 	button.connect('pressed', change_tool)
@@ -143,7 +145,7 @@ func _ready() -> void:
 		gui_list[i].connect("mouse_entered", func() -> void: hovering_over_gui = true)
 		gui_list[i].connect("mouse_exited", func() -> void: hovering_over_gui = false)
 
-	var sidebar_list : Array = [sidebar, scrollbar, button]
+	var sidebar_list : Array = [sidebar, scrollbar, button, separator]
 	for i in range(len(sidebar_list)):
 		sidebar_list[i].connect("mouse_entered", are_we_inside_sidebar)
 		sidebar_list[i].connect("mouse_exited", func() -> void: in_sidebar = false)
@@ -168,17 +170,10 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventKey:
-		if event.keycode == KEY_SHIFT:
-			shift_held = event.pressed
 		if event.keycode == KEY_CTRL:
 			ctrl_held = event.pressed
 
-
 		if event.pressed:
-			if event.keycode == KEY_Q:
-				get_tree().quit()
-
-
 			if event.keycode == KEY_Z:
 				if len(undo_list) > 1:
 					undo_list.pop_back()
@@ -271,12 +266,12 @@ func _input(event: InputEvent) -> void:
 
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			if shift_held:
+			if ctrl_held:
 				update_brushes(-5)
 				scrollbar.set_value_no_signal(brush_size)
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			if shift_held:
+			if ctrl_held:
 				update_brushes(5)
 				scrollbar.set_value_no_signal(brush_size)
 
@@ -418,11 +413,18 @@ func load_map(path: String) -> void:
 		return
 
 
-	current_file_path = path
 
 	if path.ends_with(".map"):
 		var reader : ZIPReader = ZIPReader.new()
-		reader.open(path)
+		var error := reader.open(path)
+
+		if error != OK:
+			warning.title = "Error"
+			warning.dialog_text = "Error loading map"
+			warning.popup_centered()
+			return
+
+
 		mask_image = Image.new()
 		mask_image.load_png_from_buffer(reader.read_file("mask.png"))
 		mask_image.convert(Image.FORMAT_R8)
@@ -465,6 +467,8 @@ func load_map(path: String) -> void:
 
 		mask_image_texture = ImageTexture.create_from_image(mask_image)
 		drawing_texture.texture = mask_image_texture
+
+	current_file_path = path
 
 	get_fog_size(map_image.get_size())
 
@@ -533,8 +537,24 @@ func move_background(background_node: Node2D) -> void:
 
 
 func write_map(path: String) -> void:
+	if not path.ends_with('.map'):
+		warning.title = "Invalid file format"
+		warning.dialog_text = "File must be .map"
+		warning.popup_centered()
+		return
+
+
 	var writer : ZIPPacker = ZIPPacker.new()
-	writer.open(path)
+	var error := writer.open(path)
+
+	if error != OK:
+		warning.title = "Error"
+		warning.dialog_text = "Error writing map"
+		warning.popup_centered()
+		return
+
+	current_file_path = path
+
 	writer.start_file("mask.png")
 	writer.write_file(drawing_viewport.get_texture().get_image().save_png_to_buffer())
 	writer.start_file("map.png")
@@ -542,6 +562,12 @@ func write_map(path: String) -> void:
 	writer.close_file()
 
 	writer.close()
+
+func _on_help_id_pressed(id: int) -> void:
+	if id == 0:
+		warning.title = "Keybindings"
+		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan view\n    WASD/Arrow keys: Move view\n    Mouse wheel: Zoom\n    Ctrl+S: Save\n    Ctrl+Z: Undo\nExtra keybinds\n    Ctrl+Mouse wheel: Resize brush\n    Space: Change brush type\n    T: Toggle between fog themes\n    L: Load a map"
+		warning.popup_centered()
 
 func _on_file_id_pressed(id: int) -> void:
 	if id == 0:
@@ -556,12 +582,9 @@ func _on_file_id_pressed(id: int) -> void:
 			save_dialog.popup()
 
 	if id == 2:
-		warning.title = "Keybindings"
-		warning.dialog_text = "General\n    Left click: Reveal areas\n    Right click: Hide areas\n    Middle mouse: Pan view\n    WASD/Arrow keys: Move view\n    Mouse wheel: Zoom\n    Shift+Mouse wheel: Resize brush\n    Ctrl+S: Save\n    Ctrl+Z: Undo\nExtra keybinds\n    Space: Change brush type\n    C: Change color of size indicator\n    T: Toggle between fog themes\n    P: Limit FPS"
-		warning.popup_centered()
-
-	if id == 3:
 		get_tree().quit()
+
+
 
 func update_colorscheme(id: int) -> void:
 	if current_file_path == "":

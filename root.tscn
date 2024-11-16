@@ -423,14 +423,12 @@ theme = SubResource("Theme_6yvrb")
 
 [node name="File" type="PopupMenu" parent="GUI/MenuBar"]
 prefer_native_menu = true
-item_count = 4
+item_count = 3
 item_0/text = "Load"
 item_1/text = "Save"
 item_1/id = 1
-item_2/text = "Help"
+item_2/text = "Exit"
 item_2/id = 2
-item_3/text = "Exit"
-item_3/id = 3
 
 [node name="Colorscheme" type="PopupMenu" parent="GUI/MenuBar"]
 auto_translate_mode = 1
@@ -461,6 +459,12 @@ item_6/id = 6
 item_7/text = "Lime"
 item_7/checkable = 2
 item_7/id = 7
+
+[node name="Help" type="PopupMenu" parent="GUI/MenuBar"]
+auto_translate_mode = 1
+prefer_native_menu = true
+item_count = 1
+item_0/text = "Show keybinds"
 
 [node name="SavingLabel" type="Label" parent="GUI"]
 visible = false
@@ -508,7 +512,7 @@ flat = true
 icon_alignment = 1
 expand_icon = true
 
-[node name="HSeparator2" type="HSeparator" parent="GUI/PanelContainer/VBoxContainer"]
+[node name="Separator" type="HSeparator" parent="GUI/PanelContainer/VBoxContainer"]
 layout_mode = 2
 
 [node name="Label3" type="Label" parent="GUI/PanelContainer/VBoxContainer"]
@@ -582,7 +586,8 @@ text = "             Welcome to the Fog of War tool
 Click on \"File\" to load an image
 Afterwards, use Left Click to clear fog and Right Click to reapply it
 You can undo with Ctrl+Z
-You can pan the camera with middle mouse"
+You can pan the camera with middle mouse
+Change your tool and brush size in the sidebar to the right"
 editable = false
 context_menu_enabled = false
 shortcut_keys_enabled = false
@@ -596,9 +601,9 @@ wrap_mode = 1
 [node name="InfoDegus" type="TextureRect" parent="."]
 z_index = -1
 layout_mode = 0
-offset_left = -509.0
-offset_top = -287.0
-offset_right = 411.0
-offset_bottom = 326.0
+offset_left = -572.0
+offset_top = -291.0
+offset_right = 462.0
+offset_bottom = 398.0
 texture = ExtResource("8_lc3x1")
 expand_mode = 1

@@ -159,88 +159,11 @@ func _ready() -> void:
 	if len(args) > 0:
 		load_map(args[0])
 
-
-
-func on_scrollbar_value_changed(value: float) -> void:
-	brush_size = value
-	cursor_texture.size = Vector2(brush_size, brush_size)
-	brush_size_changed.emit(brush_size)
-
-
-func update_brushes(value: int = 0) -> void:
-	brush_size = min(max(BRUSH_SIZE_MIN, brush_size + value), BRUSH_SIZE_MAX)
-	cursor_texture.size = Vector2(brush_size, brush_size)
-	brush_size_changed.emit(brush_size)
-
-func _process(_delta : float) -> void:
-	if in_sidebar:
-		cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
-	else:
-		cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
-
-	corner_stuff()
-
-func corner_stuff() -> void:
-	if not selecting:
-		for i in range(4):
-			corner_list[i].visible = false
-		return
-	for i in range(4):
-		corner_list[i].visible = true
-
-
-	var width : float = CORNER_BASE_SIZE / dm_camera.zoom.x
-	for i in range(4):
-		corner_list[i].size = Vector2(width, width)
-
-	var mouse_pos : Vector2 = get_global_mouse_position()
-
-	corner_list[0].position = selector_start_pos
-	corner_list[1].position = Vector2(selector_start_pos.x, mouse_pos.y)
-	corner_list[2].position = Vector2(mouse_pos.x, selector_start_pos.y)
-	corner_list[3].position = mouse_pos
-
-	if selector_start_pos.x > mouse_pos.x:
-		corner_list[0].flip_h = true
-		corner_list[1].flip_h = true
-		corner_list[2].flip_h = false
-		corner_list[3].flip_h = false
-
-		corner_list[0].position.x = selector_start_pos.x - width
-		corner_list[1].position.x = selector_start_pos.x - width
-	else: 
-		corner_list[0].flip_h = false
-		corner_list[1].flip_h = false
-		corner_list[2].flip_h = true
-		corner_list[3].flip_h = true
-
-		corner_list[2].position.x = mouse_pos.x - width
-		corner_list[3].position.x = mouse_pos.x - width
-
-	if selector_start_pos.y > mouse_pos.y:
-		corner_list[0].flip_v = true
-		corner_list[1].flip_v = false
-		corner_list[2].flip_v = true
-		corner_list[3].flip_v = false
-
-		corner_list[0].position.y = selector_start_pos.y - width
-		corner_list[2].position.y = selector_start_pos.y - width
-	else: 
-		corner_list[1].flip_v = true
-		corner_list[0].flip_v = false
-		corner_list[2].flip_v = false
-		corner_list[3].flip_v = true
-
-		corner_list[1].position.y = mouse_pos.y - width
-		corner_list[3].position.y = mouse_pos.y - width
-
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		if event.pressed:
 			if event.keycode == KEY_L:
 				load_dialog.popup()
-			if event.keycode == KEY_U:
-				temp()
 	if current_file_path == "":
 		return
 
@@ -362,6 +285,80 @@ func _input(event: InputEvent) -> void:
 			drawing_texture.visible = false
 		on_mouse_pos_changed.emit(get_global_mouse_position())
 
+func on_scrollbar_value_changed(value: float) -> void:
+	brush_size = value
+	cursor_texture.size = Vector2(brush_size, brush_size)
+	brush_size_changed.emit(brush_size)
+
+
+func update_brushes(value: int = 0) -> void:
+	brush_size = min(max(BRUSH_SIZE_MIN, brush_size + value), BRUSH_SIZE_MAX)
+	cursor_texture.size = Vector2(brush_size, brush_size)
+	brush_size_changed.emit(brush_size)
+
+func _process(_delta : float) -> void:
+	if in_sidebar:
+		cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
+	else:
+		cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+
+	corner_stuff()
+
+func corner_stuff() -> void:
+	if not selecting:
+		for i in range(4):
+			corner_list[i].visible = false
+		return
+	for i in range(4):
+		corner_list[i].visible = true
+
+
+	var width : float = CORNER_BASE_SIZE / dm_camera.zoom.x
+	for i in range(4):
+		corner_list[i].size = Vector2(width, width)
+
+	var mouse_pos : Vector2 = get_global_mouse_position()
+
+	corner_list[0].position = selector_start_pos
+	corner_list[1].position = Vector2(selector_start_pos.x, mouse_pos.y)
+	corner_list[2].position = Vector2(mouse_pos.x, selector_start_pos.y)
+	corner_list[3].position = mouse_pos
+
+	if selector_start_pos.x > mouse_pos.x:
+		corner_list[0].flip_h = true
+		corner_list[1].flip_h = true
+		corner_list[2].flip_h = false
+		corner_list[3].flip_h = false
+
+		corner_list[0].position.x = selector_start_pos.x - width
+		corner_list[1].position.x = selector_start_pos.x - width
+	else: 
+		corner_list[0].flip_h = false
+		corner_list[1].flip_h = false
+		corner_list[2].flip_h = true
+		corner_list[3].flip_h = true
+
+		corner_list[2].position.x = mouse_pos.x - width
+		corner_list[3].position.x = mouse_pos.x - width
+
+	if selector_start_pos.y > mouse_pos.y:
+		corner_list[0].flip_v = true
+		corner_list[1].flip_v = false
+		corner_list[2].flip_v = true
+		corner_list[3].flip_v = false
+
+		corner_list[0].position.y = selector_start_pos.y - width
+		corner_list[2].position.y = selector_start_pos.y - width
+	else: 
+		corner_list[1].flip_v = true
+		corner_list[0].flip_v = false
+		corner_list[2].flip_v = false
+		corner_list[3].flip_v = true
+
+		corner_list[1].position.y = mouse_pos.y - width
+		corner_list[3].position.y = mouse_pos.y - width
+
+
 func set_cursor_texture() -> void:
 	if tool_index == tool.SQUARE_BRUSH:
 		cursor_texture.visible = true
@@ -372,7 +369,6 @@ func set_cursor_texture() -> void:
 	elif tool_index == tool.SELECTOR:
 		cursor_texture.visible = false
 
-
 func copy_viewport_texture() -> void:
 	var image : Image = drawing_viewport.get_texture().get_image()
 	image.convert(Image.FORMAT_R8)
@@ -382,19 +378,6 @@ func copy_viewport_texture() -> void:
 
 	if len(undo_list) > UNDO_LIST_MAX_SIZE:
 		undo_list.pop_front()
-
-func temp() -> void:
-	var writer : ZIPPacker = ZIPPacker.new()
-	writer.open('/home/jona/masks/masks.zip')
-
-	for i in range(len(undo_list)):
-		writer.start_file("%s.png" % i)
-		writer.write_file(undo_list[i].get_image().save_png_to_buffer())
-	writer.close_file()
-
-	writer.close()
-
-
 
 func update_fog_texture(color : Color) -> void:
 	var fog_image_texture : Texture2D

@@ -1,5 +1,80 @@
 extends Control
 
+signal on_m1_pressed(pressed : bool)
+signal on_m2_pressed(pressed : bool)
+signal on_mouse_pos_changed(position : Vector2)
+signal brush_size_changed(size : int)
+signal tool_changed(index : int)
+signal selector_finished(start : Vector2, end : Vector2)
+signal pretend_to_draw
+
+enum tool {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
+
+const PerlinTexture = preload('res://resources/Fog.jpg')
+const PlasmaTexture = preload('res://resources/Plasma.jpg')
+
+const SquareIndicatorTexture = preload('res://resources/SquareIndicator.png')
+const CircleIndicatorTexture = preload('res://resources/CircleIndicator.png')
+const CornerTexture = preload('res://resources/Corner.png')
+
+const CircleIcon = preload('res://resources/CircleIcon.png')
+const SquareIcon = preload('res://resources/SquareIcon.png')
+const SelectorIcon = preload('res://resources/SelectorIcon.png')
+
+const BRUSH_SIZE_MIN : int = 5
+const BRUSH_SIZE_MAX : int = 500
+
+const MAX_IMAGE_SIZE : float = 3000.0
+
+const CORNER_BASE_SIZE : int = 16
+
+const FOG_COLOR_LIST : Array = [
+	Color.DARK_GRAY, # not actually used, stand in for fog
+	Color.DEEP_PINK, # not actually used, stand in for colorful fog
+	Color.BLACK,
+	Color.WHITE,
+	Color.DARK_GRAY,
+	Color.FUCHSIA,
+	Color.BLUE,
+	Color.LIME,
+]
+
+const UNDO_LIST_MAX_SIZE : int = 10
+
+var tool_index : int = 0
+var fog_color_index : int = 0
+var brush_size : int = 50
+var fog_image_height : int
+var fog_image_width : int
+
+var shift_held := false
+var ctrl_held := false
+var m1_held := false
+var m2_held := false
+var selecting := false
+var hovering_over_gui := false
+var performance_mode := false
+var in_sidebar := false
+
+var undo_list : Array = []
+var corner_list : Array = []
+
+var selector_start_pos := Vector2.ZERO
+var selector_end_pos := Vector2.ZERO
+
+var current_file_path : String
+
+var fog_scaling : float = 1.2
+
+var mask_image_texture : Texture2D
+
+var mask_texture : ImageTexture
+
+var map_image : Image
+var mask_image : Image
+var light_brush : Image
+var dark_brush : Image
+
 @onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
 @onready var saving_label : Label = $GUI/SavingLabel
@@ -33,92 +108,6 @@ extends Control
 @onready var player_root : Node2D = $PlayerWindow/PlayerRoot
 @onready var player_background : TextureRect = $PlayerWindow/PlayerRoot/Background
 
-const PerlinTexture = preload('res://resources/Fog.jpg')
-const PlasmaTexture = preload('res://resources/Plasma.jpg')
-
-const SquareIndicatorTexture = preload('res://resources/SquareIndicator.png')
-const CircleIndicatorTexture = preload('res://resources/CircleIndicator.png')
-const CornerTexture = preload('res://resources/Corner.png')
-
-const CircleIcon = preload('res://resources/CircleIcon.png')
-const SquareIcon = preload('res://resources/SquareIcon.png')
-const SelectorIcon = preload('res://resources/SelectorIcon.png')
-
-const BRUSH_SIZE_MIN : int = 5
-const BRUSH_SIZE_MAX : int = 500
-
-const MAX_IMAGE_SIZE : float = 3000.0
-
-const CORNER_BASE_SIZE : int = 16
-
-enum TOOL {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
-
-var tool_index : int = 0
-
-var selecting : bool = false
-
-var selector_start_pos : Vector2 = Vector2.ZERO
-var selector_end_pos : Vector2 = Vector2.ZERO
-
-
-var current_file_path : String
-
-signal tool_changed(index : int)
-
-signal selector_finished(start : Vector2, end : Vector2)
-
-var fog_scaling : float = 1.2
-
-var mask_image_texture : Texture2D
-
-var hovering_over_gui : bool = false
-var performance_mode : bool = false
-
-var brush_size : int = 50
-
-var map_image : Image
-
-var fog_image_height : int
-var fog_image_width : int
-
-var mask_image : Image
-var mask_texture : ImageTexture
-
-var light_brush : Image
-var dark_brush : Image
-
-var shift_held : bool = false
-var ctrl_held : bool = false
-var m1_held : bool = false
-var m2_held : bool = false
-
-var in_sidebar : bool = false
-
-var undo_list : Array = []
-
-signal m1(pressed : bool)
-signal m2(pressed : bool)
-signal mouse_pos_signal(position : Vector2)
-signal brush_size_changed(size : int)
-signal pretend_to_draw
-
-const FOG_COLOR_LIST : Array = [
-	Color.DARK_GRAY,
-	Color.DEEP_PINK,
-	Color.BLACK,
-	Color.WHITE,
-	Color.DARK_GRAY,
-	Color.FUCHSIA,
-	Color.BLUE,
-	Color.LIME,
-]
-
-var fog_color_index : int = 0
-
-var corner_list : Array = []
-
-const UNDO_LIST_MAX_SIZE : int = 10
-
 
 func _ready() -> void:
 	get_window().title = "DM Window"
@@ -135,20 +124,18 @@ func _ready() -> void:
 	button.connect('mouse_exited', button.release_focus)
 	scrollbar.set_value_no_signal(brush_size)
 
-	drawing_node.connect('finished', wait_one_frame_and_then_copy)
+	drawing_node.connect('on_finished_drawing', wait_one_frame_and_then_copy)
 
 	set_cursor_texture()
 	tool_index = -1
 	change_tool()
 
 	for i in range(4):
-		var node : Node2D = Node2D.new()
 		var texture : TextureRect = TextureRect.new()
 		texture.texture = CornerTexture
 		texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		texture.size = Vector2(CORNER_BASE_SIZE, CORNER_BASE_SIZE)
-		self.add_child(node)
-		node.add_child(texture)
+		self.add_child(texture)
 		corner_list.append(texture)
 
 	var gui_list : Array = [menu_bar, file_menu,  colorscheme_menu, sidebar, scrollbar, button]
@@ -172,29 +159,6 @@ func _ready() -> void:
 	if len(args) > 0:
 		load_map(args[0])
 
-func wait_one_frame_and_then_copy() -> void:
-	await RenderingServer.frame_post_draw
-	copy_viewport_texture()
-
-func are_we_inside_sidebar() -> void:
-	if m1_held or m2_held:
-		return
-	else:
-		in_sidebar = true
-
-func change_tool() -> void:
-	tool_index = (tool_index + 1) % TOOL.LENGTH
-	tool_changed.emit(tool_index)
-	set_cursor_texture()
-	if tool_index == TOOL.SQUARE_BRUSH:
-		button.icon = SquareIcon
-		tool_label.text = "Square brush"
-	elif tool_index == TOOL.ROUND_BRUSH:
-		button.icon = CircleIcon
-		tool_label.text = "Round brush"
-	elif tool_index == TOOL.SELECTOR:
-		button.icon = SelectorIcon
-		tool_label.text = "Selector"
 
 
 func on_scrollbar_value_changed(value: float) -> void:
@@ -339,7 +303,7 @@ func _input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton:
 
-		if tool_index == TOOL.SELECTOR:
+		if tool_index == tool.SELECTOR:
 			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
 				if event.pressed:
 					if hovering_over_gui:
@@ -354,10 +318,10 @@ func _input(event: InputEvent) -> void:
 						selector_finished.emit(selector_start_pos, selector_end_pos)
 				if event.button_index == MOUSE_BUTTON_LEFT:
 					m1_held = event.pressed
-					m1.emit(event.pressed)
+					on_m1_pressed.emit(event.pressed)
 				elif event.button_index == MOUSE_BUTTON_RIGHT:
 					m2_held = event.pressed
-					m2.emit(event.pressed)
+					on_m2_pressed.emit(event.pressed)
 			return
 
 
@@ -369,7 +333,7 @@ func _input(event: InputEvent) -> void:
 			if event.pressed == false and m1_held:
 				copy_viewport_texture()
 			m1_held = event.pressed
-			m1.emit(event.pressed)
+			on_m1_pressed.emit(event.pressed)
 
 		if event.button_index == MOUSE_BUTTON_RIGHT:
 			if hovering_over_gui and event.pressed:
@@ -380,7 +344,7 @@ func _input(event: InputEvent) -> void:
 				copy_viewport_texture()
 
 			m2_held = event.pressed
-			m2.emit(event.pressed)
+			on_m2_pressed.emit(event.pressed)
 
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -396,16 +360,16 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		if m1_held or m2_held:
 			drawing_texture.visible = false
-		mouse_pos_signal.emit(get_global_mouse_position())
+		on_mouse_pos_changed.emit(get_global_mouse_position())
 
 func set_cursor_texture() -> void:
-	if tool_index == TOOL.SQUARE_BRUSH:
+	if tool_index == tool.SQUARE_BRUSH:
 		cursor_texture.visible = true
 		cursor_texture.texture = SquareIndicatorTexture
-	elif tool_index == TOOL.ROUND_BRUSH:
+	elif tool_index == tool.ROUND_BRUSH:
 		cursor_texture.visible = true
 		cursor_texture.texture = CircleIndicatorTexture
-	elif tool_index == TOOL.SELECTOR:
+	elif tool_index == tool.SELECTOR:
 		cursor_texture.visible = false
 
 
@@ -549,6 +513,30 @@ func load_map(path: String) -> void:
 		text.queue_free()
 	if is_instance_valid(info_degus):
 		info_degus.queue_free()
+
+func wait_one_frame_and_then_copy() -> void:
+	await RenderingServer.frame_post_draw
+	copy_viewport_texture()
+
+func are_we_inside_sidebar() -> void:
+	if m1_held or m2_held:
+		return
+	else:
+		in_sidebar = true
+
+func change_tool() -> void:
+	tool_index = (tool_index + 1) % tool.LENGTH
+	tool_changed.emit(tool_index)
+	set_cursor_texture()
+	if tool_index == tool.SQUARE_BRUSH:
+		button.icon = SquareIcon
+		tool_label.text = "Square brush"
+	elif tool_index == tool.ROUND_BRUSH:
+		button.icon = CircleIcon
+		tool_label.text = "Round brush"
+	elif tool_index == tool.SELECTOR:
+		button.icon = SelectorIcon
+		tool_label.text = "Selector"
 
 func move_background(background_node: Node2D) -> void:
 	var map_image_width : int = map_image.get_size()[0]

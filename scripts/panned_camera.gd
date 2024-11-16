@@ -1,5 +1,7 @@
 extends Camera2D
 
+signal on_mouse_pos_changed(pos : Vector2)
+
 const MIN_ZOOM: float = 0.1
 const MAX_ZOOM: float = 5.0
 const ZOOM_RATE: float = 8.0
@@ -8,15 +10,12 @@ const MOVE_SPEED : int = 300
 
 var target_zoom: float = 1
 
-var shift_held : bool = false
-var ctrl_held : bool = false
-
-var right_held : bool = false
-var left_held : bool = false
-var up_held : bool = false
-var down_held : bool = false
-
-signal mouse_pos_signal(pos : Vector2)
+var shift_held := false
+var ctrl_held := false
+var right_held := false
+var left_held := false
+var up_held := false
+var down_held := false
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
@@ -49,12 +48,12 @@ func _input(event: InputEvent) -> void:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP and not shift_held:
 			target_zoom = min(target_zoom + ZOOM_INCREMENT, MAX_ZOOM)
 			zoom = Vector2.ONE * target_zoom
-			mouse_pos_signal.emit(get_global_mouse_position())
+			on_mouse_pos_changed.emit(get_global_mouse_position())
 
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and not shift_held:
 			target_zoom = max(target_zoom - ZOOM_INCREMENT, MIN_ZOOM)
 			zoom = Vector2.ONE * target_zoom
-			mouse_pos_signal.emit(get_global_mouse_position())
+			on_mouse_pos_changed.emit(get_global_mouse_position())
 
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_MIDDLE:
@@ -63,14 +62,14 @@ func _input(event: InputEvent) -> void:
 func _physics_process(delta : float) -> void:
 	if left_held:
 		position.x -= MOVE_SPEED * delta / zoom.x
-		mouse_pos_signal.emit(get_global_mouse_position())
+		on_mouse_pos_changed.emit(get_global_mouse_position())
 	if right_held:
 		position.x += MOVE_SPEED * delta / zoom.x
-		mouse_pos_signal.emit(get_global_mouse_position())
+		on_mouse_pos_changed.emit(get_global_mouse_position())
 	if up_held:
 		position.y -= MOVE_SPEED * delta / zoom.x
-		mouse_pos_signal.emit(get_global_mouse_position())
+		on_mouse_pos_changed.emit(get_global_mouse_position())
 	if down_held:
 		position.y += MOVE_SPEED * delta / zoom.x
-		mouse_pos_signal.emit(get_global_mouse_position())
+		on_mouse_pos_changed.emit(get_global_mouse_position())
 

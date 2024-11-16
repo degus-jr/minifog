@@ -1,42 +1,44 @@
 extends Node2D
 
-var mouse_pos : Vector2 = Vector2.ZERO
-var prev_mouse_pos  : Vector2 = Vector2.ZERO
-var prev_prev_mouse_pos : Vector2 = Vector2.ZERO
-var m1_held: bool = false
-var m2_held: bool = false
-var brush_size: int = 50
-var pretend_to_draw: bool = false
+signal on_finished_drawing
 
-signal finished
+enum tool {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
 
+var m1_held := false
+var m2_held := false
+var selector := false
+var pretend_to_draw := false
+var should_draw_square:= false
 var selector_erase : bool
+
+var brush_size: int = 50
+var tool_index : int = 0
+
+var mouse_pos := Vector2.ZERO
+var prev_mouse_pos  := Vector2.ZERO
+var prev_prev_mouse_pos := Vector2.ZERO
+var selector_end_pos : Vector2
+var selector_start_pos : Vector2
+
+var color := Color(1, 0, 0, 1)
+
 
 @onready var root : Control = get_node('/root/Root')
 @onready var panned_camera : Camera2D = get_node('/root/Root/Camera')
 
-var should_draw_square: bool = false
-var tool_index : int = 0
-enum TOOL {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
-
-var selector : bool = false
-var selector_end_pos : Vector2
-var selector_start_pos : Vector2
-
-var color : Color = Color(1, 0, 0, 1)
 
 func _ready() -> void:
 	# root = get_tree().root.get_child(0)
-	root.connect('m1', func(pressed : bool) -> void: m1_held = pressed)
-	root.connect('m2', func(pressed : bool) -> void: m2_held = pressed)
+	root.connect('on_m1_pressed', func(pressed : bool) -> void: m1_held = pressed)
+	root.connect('on_m2_pressed', func(pressed : bool) -> void: m2_held = pressed)
 	root.connect('brush_size_changed', func(size : int) -> void: brush_size = size)
-	root.connect('mouse_pos_signal', func(mouse_pos_signal : Vector2) -> void: mouse_pos = mouse_pos_signal)
+	root.connect('on_mouse_pos_changed', func(mouse_pos_signal : Vector2) -> void: mouse_pos = mouse_pos_signal)
 	root.connect('pretend_to_draw', fake_drawing)
 	root.connect('tool_changed', func(index : int) -> void: tool_index = index)
 
 	root.connect('selector_finished', on_selector_finished)
 
-	panned_camera.connect('mouse_pos_signal', func(mouse_pos_signal : Vector2) -> void: mouse_pos = mouse_pos_signal)
+	panned_camera.connect('on_mouse_pos_changed', func(mouse_pos_signal : Vector2) -> void: mouse_pos = mouse_pos_signal)
 
 func _draw() -> void:
 	if pretend_to_draw:
@@ -47,7 +49,7 @@ func _draw() -> void:
 	if selector:
 		draw_rect(Rect2(selector_start_pos, selector_end_pos - selector_start_pos), color, true, -1.0, true)
 		selector = false
-		finished.emit()
+		on_finished_drawing.emit()
 
 	if mouse_pos == prev_mouse_pos:
 		return
@@ -62,16 +64,16 @@ func _draw() -> void:
 
 	if prev_mouse_pos == Vector2.ZERO:
 		if m1_held or m2_held:
-			if tool_index == TOOL.ROUND_BRUSH:
+			if tool_index == tool.ROUND_BRUSH:
 				draw_circle(mouse_pos, radius, color, true, -1.0, false)
-			elif tool_index == TOOL.SQUARE_BRUSH:
+			elif tool_index == tool.SQUARE_BRUSH:
 				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), color, true, -1.0, true)
 	else:
 		if m1_held or m2_held:
-			if tool_index == TOOL.ROUND_BRUSH:
+			if tool_index == tool.ROUND_BRUSH:
 				draw_circle(mouse_pos, radius, color, true, -1.0, true)
 				draw_line(mouse_pos, prev_mouse_pos, color, width, true)
-			elif tool_index == TOOL.SQUARE_BRUSH:
+			elif tool_index == tool.SQUARE_BRUSH:
 				var points : PackedVector2Array
 				var angle : float = mouse_pos.angle_to_point(prev_mouse_pos)
 

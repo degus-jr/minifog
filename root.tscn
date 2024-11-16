@@ -488,13 +488,13 @@ size_flags_vertical = 3
 [node name="Label1" type="Label" parent="GUI/PanelContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-text = "Tool"
+text = "Tool:"
 horizontal_alignment = 1
 
 [node name="ToolLabel" type="Label" parent="GUI/PanelContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 text = "Selector"
 horizontal_alignment = 1
 
@@ -514,7 +514,7 @@ layout_mode = 2
 [node name="Label3" type="Label" parent="GUI/PanelContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-text = "Brush size"
+text = "Brush size:"
 horizontal_alignment = 1
 
 [node name="VScrollBar" type="VScrollBar" parent="GUI/PanelContainer/VBoxContainer"]

@@ -18,6 +18,10 @@ boot_splash/image="res://resources/SplashScreen.png"
 config/icon="res://icon.png"
 config/windows_native_icon="res://icon.ico"
 
+[debug]
+
+gdscript/warnings/untyped_declaration=2
+
 [display]
 
 window/subwindows/embed_subwindows=false

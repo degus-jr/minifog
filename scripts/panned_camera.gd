@@ -16,7 +16,7 @@ var left_held : bool = false
 var up_held : bool = false
 var down_held : bool = false
 
-signal mouse_pos_signal(pos)
+signal mouse_pos_signal(pos : Vector2)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
@@ -60,7 +60,7 @@ func _input(event: InputEvent) -> void:
 		if event.button_mask == MOUSE_BUTTON_MASK_MIDDLE:
 			position -= event.relative / zoom
 
-func _physics_process(delta):
+func _physics_process(delta : float) -> void:
 	if left_held:
 		position.x -= MOVE_SPEED * delta / zoom.x
 		mouse_pos_signal.emit(get_global_mouse_position())

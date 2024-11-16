@@ -20,18 +20,18 @@ extends Control
 
 @onready var drawing_viewport : SubViewport = $DrawingViewport
 @onready var drawing_node : Node2D = $DrawingViewport/DrawingNode
-@onready var drawing_texture = $DrawingViewport/DrawingTexture
+@onready var drawing_texture : TextureRect = $DrawingViewport/DrawingTexture
 
 @onready var dm_camera: Camera2D = $Camera
-@onready var dm_fog = $DmFog
-@onready var dm_root = $DmRoot
-@onready var dm_background = $DmRoot/Background
+@onready var dm_fog : TextureRect = $DmFog
+@onready var dm_root : Node2D = $DmRoot
+@onready var dm_background : TextureRect = $DmRoot/Background
 
 @onready var player_window: Window = $PlayerWindow
 @onready var player_camera: Camera2D = $PlayerWindow/Camera
-@onready var player_fog = $PlayerWindow/PlayerFog
-@onready var player_root = $PlayerWindow/PlayerRoot
-@onready var player_background = $PlayerWindow/PlayerRoot/Background
+@onready var player_fog : TextureRect = $PlayerWindow/PlayerFog
+@onready var player_root : Node2D = $PlayerWindow/PlayerRoot
+@onready var player_background : TextureRect = $PlayerWindow/PlayerRoot/Background
 
 const PerlinTexture = preload('res://resources/Fog.jpg')
 const PlasmaTexture = preload('res://resources/Plasma.jpg')
@@ -63,13 +63,13 @@ var selector_end_pos : Vector2 = Vector2.ZERO
 
 var current_file_path : String
 
-signal tool_changed(index)
+signal tool_changed(index : int)
 
-signal selector_finished(start, end)
+signal selector_finished(start : Vector2, end : Vector2)
 
 var fog_scaling : float = 1.2
 
-var mask_image_texture
+var mask_image_texture : Texture2D
 
 var hovering_over_gui : bool = false
 var performance_mode : bool = false
@@ -96,15 +96,15 @@ var in_sidebar : bool = false
 
 var undo_list : Array = []
 
-signal m1(pressed)
-signal m2(pressed)
-signal mouse_pos_signal(position)
-signal brush_size_changed(size)
+signal m1(pressed : bool)
+signal m2(pressed : bool)
+signal mouse_pos_signal(position : Vector2)
+signal brush_size_changed(size : int)
 signal pretend_to_draw
 
 const FOG_COLOR_LIST : Array = [
-	"fog",
-	"colorful_fog",
+	Color.DARK_GRAY,
+	Color.DEEP_PINK,
 	Color.BLACK,
 	Color.WHITE,
 	Color.DARK_GRAY,
@@ -123,8 +123,8 @@ const UNDO_LIST_MAX_SIZE : int = 10
 func _ready() -> void:
 	get_window().title = "DM Window"
 
-	load_dialog.connect("file_selected", func(path): load_map(path))
-	save_dialog.connect("file_selected", func(path): write_map(path))
+	load_dialog.connect("file_selected", func(path : String) -> void: load_map(path))
+	save_dialog.connect("file_selected", func(path : String) -> void: write_map(path))
 	scrollbar.connect('value_changed', on_scrollbar_value_changed)
 
 	file_menu.connect('id_pressed', _on_file_id_pressed)
@@ -142,24 +142,24 @@ func _ready() -> void:
 	change_tool()
 
 	for i in range(4):
-		var node = Node2D.new()
-		var texture = TextureRect.new()
+		var node : Node2D = Node2D.new()
+		var texture : TextureRect = TextureRect.new()
 		texture.texture = CornerTexture
-		texture.expand_mode = 1
+		texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		texture.size = Vector2(CORNER_BASE_SIZE, CORNER_BASE_SIZE)
 		self.add_child(node)
 		node.add_child(texture)
 		corner_list.append(texture)
 
-	var gui_list = [menu_bar, file_menu,  colorscheme_menu, sidebar, scrollbar, button]
+	var gui_list : Array = [menu_bar, file_menu,  colorscheme_menu, sidebar, scrollbar, button]
 	for i in range(len(gui_list)):
-		gui_list[i].connect("mouse_entered", func(): hovering_over_gui = true)
-		gui_list[i].connect("mouse_exited", func(): hovering_over_gui = false)
+		gui_list[i].connect("mouse_entered", func() -> void: hovering_over_gui = true)
+		gui_list[i].connect("mouse_exited", func() -> void: hovering_over_gui = false)
 
-	var sidebar_list = [sidebar, scrollbar, button]
+	var sidebar_list : Array = [sidebar, scrollbar, button]
 	for i in range(len(sidebar_list)):
 		sidebar_list[i].connect("mouse_entered", are_we_inside_sidebar)
-		sidebar_list[i].connect("mouse_exited", func(): in_sidebar = false)
+		sidebar_list[i].connect("mouse_exited", func() -> void: in_sidebar = false)
 
 	load_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images / .map files")
 	save_dialog.add_filter("*.map", ".map files")
@@ -167,22 +167,22 @@ func _ready() -> void:
 
 	cursor_texture.size = Vector2(brush_size, brush_size)
 
-	var args = OS.get_cmdline_args()
+	var args : Array = OS.get_cmdline_args()
 
 	if len(args) > 0:
 		load_map(args[0])
 
-func wait_one_frame_and_then_copy():
+func wait_one_frame_and_then_copy() -> void:
 	await RenderingServer.frame_post_draw
 	copy_viewport_texture()
 
-func are_we_inside_sidebar():
+func are_we_inside_sidebar() -> void:
 	if m1_held or m2_held:
 		return
 	else:
 		in_sidebar = true
 
-func change_tool():
+func change_tool() -> void:
 	tool_index = (tool_index + 1) % TOOL.LENGTH
 	tool_changed.emit(tool_index)
 	set_cursor_texture()
@@ -197,7 +197,7 @@ func change_tool():
 		tool_label.text = "Selector"
 
 
-func on_scrollbar_value_changed(value: float):
+func on_scrollbar_value_changed(value: float) -> void:
 	brush_size = value
 	cursor_texture.size = Vector2(brush_size, brush_size)
 	brush_size_changed.emit(brush_size)
@@ -208,7 +208,7 @@ func update_brushes(value: int = 0) -> void:
 	cursor_texture.size = Vector2(brush_size, brush_size)
 	brush_size_changed.emit(brush_size)
 
-func _process(_delta):
+func _process(_delta : float) -> void:
 	if in_sidebar:
 		cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
 	else:
@@ -218,7 +218,7 @@ func _process(_delta):
 
 	corner_stuff()
 
-func corner_stuff():
+func corner_stuff() -> void:
 	if not selecting:
 		for i in range(4):
 			corner_list[i].visible = false
@@ -227,11 +227,11 @@ func corner_stuff():
 		corner_list[i].visible = true
 
 
-	var width = CORNER_BASE_SIZE / dm_camera.zoom.x
+	var width : float = CORNER_BASE_SIZE / dm_camera.zoom.x
 	for i in range(4):
 		corner_list[i].size = Vector2(width, width)
 
-	var mouse_pos = get_global_mouse_position()
+	var mouse_pos : Vector2 = get_global_mouse_position()
 
 	corner_list[0].position = selector_start_pos
 	corner_list[1].position = Vector2(selector_start_pos.x, mouse_pos.y)
@@ -316,7 +316,7 @@ func _input(event: InputEvent) -> void:
 
 
 			if event.keycode == KEY_T:
-				var id = (fog_color_index + 1) % len(FOG_COLOR_LIST)
+				var id : int = (fog_color_index + 1) % len(FOG_COLOR_LIST)
 				update_colorscheme(id)
 
 			if event.keycode == KEY_P:
@@ -412,17 +412,17 @@ func set_cursor_texture() -> void:
 
 
 func copy_viewport_texture() -> void:
-	var image = drawing_viewport.get_texture().get_image()
+	var image : Image = drawing_viewport.get_texture().get_image()
 	image.convert(Image.FORMAT_R8)
-	var image_texture = ImageTexture.new()
+	var image_texture : Texture2D = ImageTexture.new()
 	image_texture = ImageTexture.create_from_image(image)
 	undo_list.append(image_texture)
 
 	if len(undo_list) > UNDO_LIST_MAX_SIZE:
 		undo_list.pop_front()
 
-func temp():
-	var writer = ZIPPacker.new()
+func temp() -> void:
+	var writer : ZIPPacker = ZIPPacker.new()
 	writer.open('/home/jona/masks/masks.zip')
 
 	for i in range(len(undo_list)):
@@ -434,17 +434,16 @@ func temp():
 
 
 
-func update_fog_texture(color):
-	var fog_image_texture
-	if color is String:
-		if color == "fog":
-			fog_image_texture = PerlinTexture
-		elif color == "colorful_fog":
-			fog_image_texture = PlasmaTexture
+func update_fog_texture(color : Color) -> void:
+	var fog_image_texture : Texture2D
+	if color == Color.DARK_GRAY:
+		fog_image_texture = PerlinTexture
 		RenderingServer.set_default_clear_color(Color.WHITE)
-
+	elif color == Color.DEEP_PINK:
+		fog_image_texture = PlasmaTexture
+		RenderingServer.set_default_clear_color(Color.WHITE)
 	else:
-		var fog_image = Image.create(fog_image_width, fog_image_height, false, Image.FORMAT_RGBA8)
+		var fog_image : Image = Image.create(fog_image_width, fog_image_height, false, Image.FORMAT_RGBA8)
 		fog_image.fill(color)
 		fog_image_texture = ImageTexture.create_from_image(fog_image)
 		RenderingServer.set_default_clear_color(color)
@@ -452,7 +451,7 @@ func update_fog_texture(color):
 	player_fog.texture = fog_image_texture
 	dm_fog.texture = fog_image_texture
 
-func get_fog_size(image_size):
+func get_fog_size(image_size : Vector2i) -> void:
 	if image_size[0] > image_size[1]:
 		fog_image_width = image_size[0] * fog_scaling
 		fog_image_height = image_size[0] * fog_scaling
@@ -477,7 +476,7 @@ func load_map(path: String) -> void:
 	current_file_path = path
 
 	if path.ends_with(".map"):
-		var reader = ZIPReader.new()
+		var reader : ZIPReader = ZIPReader.new()
 		reader.open(path)
 		mask_image = Image.new()
 		mask_image.load_png_from_buffer(reader.read_file("mask.png"))
@@ -500,8 +499,8 @@ func load_map(path: String) -> void:
 		map_image.load(path)
 		map_image.convert(Image.FORMAT_RGB8)
 
-		var map_image_width = map_image.get_size()[0]
-		var map_image_height = map_image.get_size()[1]
+		var map_image_width : int = map_image.get_size()[0]
+		var map_image_height : int = map_image.get_size()[1]
 
 		if map_image_width > MAX_IMAGE_SIZE or map_image_height > MAX_IMAGE_SIZE:
 			var ratio : float
@@ -543,7 +542,7 @@ func load_map(path: String) -> void:
 	move_background(player_root)
 	move_background(dm_root)
 
-	var image_texture = ImageTexture.new()
+	var image_texture : Texture2D = ImageTexture.new()
 	image_texture.set_image(map_image)
 	dm_background.texture = image_texture
 	player_background.texture = image_texture
@@ -553,19 +552,19 @@ func load_map(path: String) -> void:
 	if is_instance_valid(info_degus):
 		info_degus.queue_free()
 
-func move_background(background_node: Node2D):
-	var map_image_width = map_image.get_size()[0]
-	var map_image_height = map_image.get_size()[1]
+func move_background(background_node: Node2D) -> void:
+	var map_image_width : int = map_image.get_size()[0]
+	var map_image_height : int = map_image.get_size()[1]
 
-	var x_diff = fog_image_width - map_image_width
-	var y_diff = fog_image_height - map_image_height
+	var x_diff : float = fog_image_width - map_image_width
+	var y_diff : float = fog_image_height - map_image_height
 
 	background_node.position.x = x_diff / 2
 	background_node.position.y = y_diff / 2
 
 
 func write_map(path: String) -> void:
-	var writer = ZIPPacker.new()
+	var writer : ZIPPacker = ZIPPacker.new()
 	writer.open(path)
 	writer.start_file("mask.png")
 	writer.write_file(drawing_viewport.get_texture().get_image().save_png_to_buffer())

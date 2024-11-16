@@ -1,8 +1,8 @@
 extends Node2D
 
-var mouse_pos = Vector2.ZERO
-var prev_mouse_pos = Vector2.ZERO
-var prev_prev_mouse_pos = Vector2.ZERO
+var mouse_pos : Vector2 = Vector2.ZERO
+var prev_mouse_pos  : Vector2 = Vector2.ZERO
+var prev_prev_mouse_pos : Vector2 = Vector2.ZERO
 var m1_held: bool = false
 var m2_held: bool = false
 var brush_size: int = 50
@@ -19,7 +19,7 @@ var should_draw_square: bool = false
 var tool_index : int = 0
 enum TOOL {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
 
-var selector = false
+var selector : bool = false
 var selector_end_pos : Vector2
 var selector_start_pos : Vector2
 
@@ -27,16 +27,16 @@ var color : Color = Color(1, 0, 0, 1)
 
 func _ready() -> void:
 	# root = get_tree().root.get_child(0)
-	root.connect('m1', func(pressed): m1_held = pressed)
-	root.connect('m2', func(pressed): m2_held = pressed)
-	root.connect('brush_size_changed', func(size): brush_size = size)
-	root.connect('mouse_pos_signal', func(mouse_pos_signal): mouse_pos = mouse_pos_signal)
+	root.connect('m1', func(pressed : bool) -> void: m1_held = pressed)
+	root.connect('m2', func(pressed : bool) -> void: m2_held = pressed)
+	root.connect('brush_size_changed', func(size : int) -> void: brush_size = size)
+	root.connect('mouse_pos_signal', func(mouse_pos_signal : Vector2) -> void: mouse_pos = mouse_pos_signal)
 	root.connect('pretend_to_draw', fake_drawing)
-	root.connect('tool_changed', func(index): tool_index = index)
+	root.connect('tool_changed', func(index : int) -> void: tool_index = index)
 
 	root.connect('selector_finished', on_selector_finished)
 
-	panned_camera.connect('mouse_pos_signal', func(mouse_pos_signal): mouse_pos = mouse_pos_signal)
+	panned_camera.connect('mouse_pos_signal', func(mouse_pos_signal : Vector2) -> void: mouse_pos = mouse_pos_signal)
 
 func _draw() -> void:
 	if pretend_to_draw:
@@ -51,8 +51,8 @@ func _draw() -> void:
 
 	if mouse_pos == prev_mouse_pos:
 		return
-	var radius = brush_size / 2
-	var width = brush_size
+	var radius : float = brush_size / 2
+	var width : int = brush_size
 	if (mouse_pos.x < 0 or
 		mouse_pos.y < 0 or
 		prev_mouse_pos.x < 0 or
@@ -72,8 +72,8 @@ func _draw() -> void:
 				draw_circle(mouse_pos, radius, color, true, -1.0, true)
 				draw_line(mouse_pos, prev_mouse_pos, color, width, true)
 			elif tool_index == TOOL.SQUARE_BRUSH:
-				var points
-				var angle = mouse_pos.angle_to_point(prev_mouse_pos)
+				var points : PackedVector2Array
+				var angle : float = mouse_pos.angle_to_point(prev_mouse_pos)
 
 				if (angle < 3.141592 and angle > 1.570796) or (angle < 0 and angle > -1.570796):
 					points = PackedVector2Array([
@@ -102,7 +102,7 @@ func _draw() -> void:
 
 	prev_mouse_pos = mouse_pos
 
-func on_selector_finished(start, end):
+func on_selector_finished(start : Vector2, end : Vector2) -> void:
 	selector_end_pos = end
 	selector_start_pos = start
 	selector = true

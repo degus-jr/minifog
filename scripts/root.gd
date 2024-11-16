@@ -214,8 +214,6 @@ func _process(_delta : float) -> void:
 	else:
 		cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
 
-	# print(len(undo_list))
-
 	corner_stuff()
 
 func corner_stuff() -> void:

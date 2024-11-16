@@ -51,7 +51,7 @@ func _draw() -> void:
 
 	if mouse_pos == prev_mouse_pos:
 		return
-	var radius : float = brush_size / 2
+	var radius : float = float(brush_size) / 2
 	var width : int = brush_size
 	if (mouse_pos.x < 0 or
 		mouse_pos.y < 0 or

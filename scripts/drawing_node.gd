@@ -41,6 +41,7 @@ func _ready() -> void:
 	panned_camera.connect('on_mouse_pos_changed', func(mouse_pos_signal : Vector2) -> void: mouse_pos = mouse_pos_signal)
 
 func _draw() -> void:
+	print('being called')
 	if pretend_to_draw:
 		draw_circle(Vector2.ZERO, 1, Color(1, 0, 0, 1))
 		pretend_to_draw = false
@@ -70,6 +71,8 @@ func _draw() -> void:
 				draw_rect(Rect2(mouse_pos - Vector2.ONE * radius, Vector2(width, width)), color, true, -1.0, true)
 	else:
 		if m1_held or m2_held:
+			print("prev", prev_mouse_pos)
+			print("now", mouse_pos)
 			if tool_index == tool.ROUND_BRUSH:
 				draw_circle(mouse_pos, radius, color, true, -1.0, true)
 				draw_line(mouse_pos, prev_mouse_pos, color, width, true)

@@ -87,6 +87,7 @@ var dark_brush : Image
 @onready var info_degus : TextureRect = $InfoDegus
 
 @onready var text : TextEdit = $TextEdit
+@onready var player_text : TextEdit = $PlayerWindow/TextEdit
 
 @onready var load_dialog: FileDialog = $LoadDialog
 @onready var save_dialog: FileDialog = $SaveDialog
@@ -500,6 +501,8 @@ func load_map(path: String) -> void:
 		text.queue_free()
 	if is_instance_valid(info_degus):
 		info_degus.queue_free()
+	if is_instance_valid(player_text):
+		player_text.queue_free()
 
 func wait_one_frame_and_then_copy() -> void:
 	await RenderingServer.frame_post_draw

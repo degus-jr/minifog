@@ -29,7 +29,7 @@ const MAX_IMAGE_SIZE : float = 3000.0
 const CORNER_BASE_SIZE : int = 16
 
 const FOG_COLOR_LIST : Array = [
-	Color.DARK_GRAY, # not actually used, stand in for fog
+	Color.BURLYWOOD, # not actually used, stand in for fog
 	Color.DEEP_PINK, # not actually used, stand in for colorful fog
 	Color.BLACK,
 	Color.WHITE,
@@ -221,6 +221,7 @@ func _input(event: InputEvent) -> void:
 
 
 	if event is InputEventMouseButton:
+		on_mouse_pos_changed.emit(get_global_mouse_position())
 
 		if tool_index == tool.SELECTOR:
 			if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
@@ -377,7 +378,7 @@ func copy_viewport_texture() -> void:
 
 func update_fog_texture(color : Color) -> void:
 	var fog_image_texture : Texture2D
-	if color == Color.DARK_GRAY:
+	if color == Color.BURLYWOOD:
 		fog_image_texture = PerlinTexture
 		RenderingServer.set_default_clear_color(Color.WHITE)
 	elif color == Color.DEEP_PINK:

@@ -108,6 +108,7 @@ var dark_brush : Image
 @onready var player_background : TextureRect = $PlayerWindow/PlayerRoot/Background
 
 @onready var player_view : Panel = $PlayerViewRectangle
+@onready var player_view_text : TextEdit = $PlayerViewRectangle/TextEdit
 
 
 func _ready() -> void:
@@ -503,6 +504,7 @@ func load_map(path: String) -> void:
 	player_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
 
 	player_view.visible = true
+	player_view_text.visible = true
 
 	move_background(player_root)
 	move_background(dm_root)

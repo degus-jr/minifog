@@ -661,6 +661,7 @@ texture = ExtResource("8_lc3x1")
 expand_mode = 1
 
 [node name="PlayerViewRectangle" type="Panel" parent="."]
+visible = false
 layout_mode = 0
 offset_left = 133.0
 offset_top = -225.0
@@ -669,6 +670,8 @@ offset_bottom = -185.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_bf3um")
 
 [node name="TextEdit" type="TextEdit" parent="PlayerViewRectangle"]
+visible = false
+layout_mode = 0
 offset_left = 3.0
 offset_top = -20.0
 offset_right = 138.0

@@ -13,10 +13,6 @@ enum tool {SQUARE_BRUSH, SELECTOR, ROUND_BRUSH, LENGTH}
 const PerlinTexture = preload('res://resources/Fog.jpg')
 const PlasmaTexture = preload('res://resources/Plasma.jpg')
 
-const SquareIndicatorTexture = preload('res://resources/SquareIndicator.png')
-const CircleIndicatorTexture = preload('res://resources/CircleIndicator.png')
-const CornerTexture = preload('res://resources/Corner.png')
-
 const CircleIcon = preload('res://resources/CircleIcon.png')
 const SquareIcon = preload('res://resources/SquareIcon.png')
 const SelectorIcon = preload('res://resources/SelectorIcon.png')
@@ -74,6 +70,7 @@ var mask_image : Image
 var light_brush : Image
 var dark_brush : Image
 
+
 @onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
 @onready var help_menu: PopupMenu = $GUI/MenuBar/Help
@@ -93,7 +90,7 @@ var dark_brush : Image
 @onready var save_dialog: FileDialog = $SaveDialog
 @onready var warning: AcceptDialog = $Warning
 @onready var cursor_node : Node2D = $CursorNode
-@onready var cursor_texture : TextureRect = $CursorNode/TextureRect
+@onready var cursor_panel : Panel = $CursorNode/Panel
 
 @onready var drawing_viewport : SubViewport = $DrawingViewport
 @onready var drawing_node : Node2D = $DrawingViewport/DrawingNode
@@ -109,6 +106,8 @@ var dark_brush : Image
 @onready var player_fog : TextureRect = $PlayerWindow/PlayerFog
 @onready var player_root : Node2D = $PlayerWindow/PlayerRoot
 @onready var player_background : TextureRect = $PlayerWindow/PlayerRoot/Background
+
+@onready var player_view : Panel = $PlayerViewRectangle
 
 
 func _ready() -> void:
@@ -133,14 +132,6 @@ func _ready() -> void:
 	tool_index = -1
 	change_tool()
 
-	for i in range(4):
-		var texture : TextureRect = TextureRect.new()
-		texture.texture = CornerTexture
-		texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		texture.size = Vector2(CORNER_BASE_SIZE, CORNER_BASE_SIZE)
-		self.add_child(texture)
-		corner_list.append(texture)
-
 	var gui_list : Array = [menu_bar, file_menu,  colorscheme_menu, sidebar, scrollbar, button]
 	for i in range(len(gui_list)):
 		gui_list[i].connect("mouse_entered", func() -> void: hovering_over_gui = true)
@@ -155,7 +146,7 @@ func _ready() -> void:
 	save_dialog.add_filter("*.map", ".map files")
 	update_brushes()
 
-	cursor_texture.size = Vector2(brush_size, brush_size)
+	cursor_panel.size = Vector2(brush_size, brush_size)
 
 	var args : Array = OS.get_cmdline_args()
 
@@ -284,87 +275,108 @@ func _input(event: InputEvent) -> void:
 
 func on_scrollbar_value_changed(value: float) -> void:
 	brush_size = value
-	cursor_texture.size = Vector2(brush_size, brush_size)
 	brush_size_changed.emit(brush_size)
+
+	if tool_index == tool.ROUND_BRUSH:
+		var new_stylebox_normal : StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 
 func update_brushes(value: int = 0) -> void:
 	brush_size = min(max(BRUSH_SIZE_MIN, brush_size + value), BRUSH_SIZE_MAX)
-	cursor_texture.size = Vector2(brush_size, brush_size)
 	brush_size_changed.emit(brush_size)
 
+	if tool_index == tool.ROUND_BRUSH:
+		var new_stylebox_normal : StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
+
 func _process(_delta : float) -> void:
-	if in_sidebar:
-		cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
-	else:
-		cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+	if tool_index != tool.SELECTOR:
+		if in_sidebar:
+			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
+		else:
+			cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+		cursor_panel.size = Vector2(brush_size, brush_size)
 
-	corner_stuff()
-
-func corner_stuff() -> void:
-	if not selecting:
-		for i in range(4):
-			corner_list[i].visible = false
+	if current_file_path == "":
 		return
-	for i in range(4):
-		corner_list[i].visible = true
+
+	var view_size : Vector2 = player_window.get_visible_rect().size
+	var view_transform : Transform2D = player_window.get_canvas_transform()
+
+	player_view.position = view_transform.origin / -view_transform.x[0]
+	player_view.size = view_size / view_transform.x[0]
 
 
-	var width : float = CORNER_BASE_SIZE / dm_camera.zoom.x
-	for i in range(4):
-		corner_list[i].size = Vector2(width, width)
+	queue_redraw()
+	if tool_index == tool.SELECTOR:
+		draw_selector()
+
+# func _draw() -> void:
+# 	if current_file_path == "":
+# 		return
+#
+# 	var view_size : Vector2 = player_window.get_visible_rect().size
+# 	var view_position : Vector2 = player_window.get_canvas_transform().origin
+# 	var view_rect : Rect2 = Rect2(view_position * -1, view_size)
+#
+# 	draw_rect(view_rect, Color(0, 0, 0, 1))
+
+
+func draw_selector() -> void:
+	if selecting:
+		cursor_panel.visible = true
+	else:
+		cursor_panel.visible = false
 
 	var mouse_pos : Vector2 = get_global_mouse_position()
 
-	corner_list[0].position = selector_start_pos
-	corner_list[1].position = Vector2(selector_start_pos.x, mouse_pos.y)
-	corner_list[2].position = Vector2(mouse_pos.x, selector_start_pos.y)
-	corner_list[3].position = mouse_pos
+	cursor_panel.size = (selector_start_pos - mouse_pos).abs()
 
-	if selector_start_pos.x > mouse_pos.x:
-		corner_list[0].flip_h = true
-		corner_list[1].flip_h = true
-		corner_list[2].flip_h = false
-		corner_list[3].flip_h = false
-
-		corner_list[0].position.x = selector_start_pos.x - width
-		corner_list[1].position.x = selector_start_pos.x - width
-	else: 
-		corner_list[0].flip_h = false
-		corner_list[1].flip_h = false
-		corner_list[2].flip_h = true
-		corner_list[3].flip_h = true
-
-		corner_list[2].position.x = mouse_pos.x - width
-		corner_list[3].position.x = mouse_pos.x - width
-
-	if selector_start_pos.y > mouse_pos.y:
-		corner_list[0].flip_v = true
-		corner_list[1].flip_v = false
-		corner_list[2].flip_v = true
-		corner_list[3].flip_v = false
-
-		corner_list[0].position.y = selector_start_pos.y - width
-		corner_list[2].position.y = selector_start_pos.y - width
-	else: 
-		corner_list[1].flip_v = true
-		corner_list[0].flip_v = false
-		corner_list[2].flip_v = false
-		corner_list[3].flip_v = true
-
-		corner_list[1].position.y = mouse_pos.y - width
-		corner_list[3].position.y = mouse_pos.y - width
+	if mouse_pos.x >= selector_start_pos.x:
+		cursor_node.position.x = selector_start_pos.x
+	else:
+		cursor_node.position.x = mouse_pos.x
+	if mouse_pos.y >= selector_start_pos.y:
+		cursor_node.position.y = selector_start_pos.y
+	else:
+		cursor_node.position.y = mouse_pos.y
 
 
 func set_cursor_texture() -> void:
 	if tool_index == tool.SQUARE_BRUSH:
-		cursor_texture.visible = true
-		cursor_texture.texture = SquareIndicatorTexture
+		cursor_panel.visible = true
+		var new_stylebox_normal : StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+		new_stylebox_normal.corner_radius_top_left = 3
+		new_stylebox_normal.corner_radius_top_right = 3
+		new_stylebox_normal.corner_radius_bottom_left = 3
+		new_stylebox_normal.corner_radius_bottom_right = 3
+		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 	elif tool_index == tool.ROUND_BRUSH:
-		cursor_texture.visible = true
-		cursor_texture.texture = CircleIndicatorTexture
-	elif tool_index == tool.SELECTOR:
-		cursor_texture.visible = false
+		cursor_panel.visible = true
+		var new_stylebox_normal : StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
+
+		# cursor_panel.add_theme_constant_override('corner_radius_bottom_right', 10)
+		# cursor_panel.get_theme_stylebox('normal').corner_radius_bottom_left = brush_size / 2
+		# cursor_panel.get_theme_stylebox('normal').corner_radius_top_left = brush_size / 2
+		# cursor_panel.get_theme_stylebox('normal').corner_radius_top_right = brush_size / 2
+
+	# elif tool_index == tool.SELECTOR:
+	# 	cursor_panel.visible = false
+
 
 func copy_viewport_texture() -> void:
 	var image : Image = drawing_viewport.get_texture().get_image()
@@ -489,6 +501,8 @@ func load_map(path: String) -> void:
 
 	dm_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
 	player_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
+
+	player_view.visible = true
 
 	move_background(player_root)
 	move_background(dm_root)

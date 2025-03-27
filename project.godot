@@ -25,6 +25,7 @@ gdscript/warnings/untyped_declaration=2
 [display]
 
 window/subwindows/embed_subwindows=false
+window/per_pixel_transparency/allowed=true
 
 [editor_plugins]
 

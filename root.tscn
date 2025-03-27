@@ -1,4 +1,4 @@
-[gd_scene load_steps=54 format=3 uid="uid://ct4l808ib7i8p"]
+[gd_scene load_steps=56 format=3 uid="uid://ct4l808ib7i8p"]
 
 [ext_resource type="Script" uid="uid://knnd3tgx0d0p" path="res://scripts/root.gd" id="1_fnbe8"]
 [ext_resource type="Script" uid="uid://dt52a1ixuy1te" path="res://scripts/panned_camera.gd" id="2_krtgi"]
@@ -365,6 +365,26 @@ shader = ExtResource("5_v4wp5")
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_a0tci"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_huihk"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0, 0, 0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bf3um"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2, 0.2, 0.2, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
 [node name="Root" type="Control"]
 z_index = 6
 layout_mode = 3
@@ -597,6 +617,11 @@ offset_right = 40.0
 offset_bottom = 40.0
 expand_mode = 1
 
+[node name="Panel" type="Panel" parent="CursorNode"]
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_huihk")
+
 [node name="TextEdit" type="TextEdit" parent="."]
 layout_mode = 0
 offset_left = -253.0
@@ -634,3 +659,33 @@ offset_right = 462.0
 offset_bottom = 398.0
 texture = ExtResource("8_lc3x1")
 expand_mode = 1
+
+[node name="PlayerViewRectangle" type="Panel" parent="."]
+layout_mode = 0
+offset_left = 133.0
+offset_top = -225.0
+offset_right = 173.0
+offset_bottom = -185.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_bf3um")
+
+[node name="TextEdit" type="TextEdit" parent="PlayerViewRectangle"]
+offset_left = 3.0
+offset_top = -20.0
+offset_right = 138.0
+offset_bottom = 18.0
+theme_override_colors/font_readonly_color = Color(0.2, 0.2, 0.2, 1)
+theme_override_constants/line_spacing = 0
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxEmpty_m6m5x")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_uj53t")
+theme_override_styles/read_only = SubResource("StyleBoxEmpty_a0tci")
+text = "Player View"
+editable = false
+context_menu_enabled = false
+shortcut_keys_enabled = false
+selecting_enabled = false
+deselect_on_focus_loss_enabled = false
+drag_and_drop_selection_enabled = false
+virtual_keyboard_enabled = false
+middle_mouse_paste_enabled = false
+wrap_mode = 1

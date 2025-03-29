@@ -315,15 +315,15 @@ func _input(event: InputEvent) -> void:
 				m2_held = event.pressed
 				on_m2_pressed.emit(event.pressed)
 
-			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				if ctrl_held:
-					update_brushes(-5)
-					scrollbar.set_value_no_signal(brush_size)
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			if ctrl_held:
+				update_brushes(-5)
+				scrollbar.set_value_no_signal(brush_size)
 
-			if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				if ctrl_held:
-					update_brushes(5)
-					scrollbar.set_value_no_signal(brush_size)
+		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			if ctrl_held:
+				update_brushes(5)
+				scrollbar.set_value_no_signal(brush_size)
 
 	elif event is InputEventMouseMotion:
 		if m1_held or m2_held:
@@ -445,7 +445,7 @@ func update_brushes(value: int = 0) -> void:
 	brush_size = min(max(BRUSH_SIZE_MIN, brush_size + value), BRUSH_SIZE_MAX)
 	brush_size_changed.emit(brush_size)
 
-	if current_tool == tool.ROUND_BRUSH:
+	if current_tool == tool.ROUND_BRUSH or current_tool == tool.TOKEN_PLACER:
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
 		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
 		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
@@ -626,8 +626,6 @@ func copy_viewport_texture() -> void:
 	image_texture = ImageTexture.create_from_image(image)
 	drawing_list.append(image_texture)
 	undo_list.append(["draw", null])
-
-	print(drawing_list)
 
 	if len(drawing_list) > UNDO_LIST_MAX_SIZE:
 		drawing_list.pop_front()

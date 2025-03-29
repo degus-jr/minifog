@@ -141,8 +141,7 @@ func _ready() -> void:
 	drawing_node.connect("on_finished_drawing", wait_one_frame_and_then_copy)
 
 	update_tool_visuals()
-	tool_index = -1
-	change_tool()
+	select_tool(0)
 
 	var gui_list: Array = [
 		menu_bar,
@@ -223,7 +222,7 @@ func _input(event: InputEvent) -> void:
 					)
 
 			if event.keycode == KEY_SPACE:
-				change_tool()
+				select_tool((tool_index + 1) % tool.LENGTH)
 
 			if event.keycode == KEY_T:
 				var id: int = (fog_color_index + 1) % len(FOG_COLOR_LIST)
@@ -657,20 +656,6 @@ func select_tool(index: int) -> void:
 	tool_changed.emit(index)
 	update_tool_visuals()
 
-	if tool_index == tool.SQUARE_BRUSH:
-		tool_label.text = "Square brush"
-	elif tool_index == tool.ROUND_BRUSH:
-		tool_label.text = "Round brush"
-	elif tool_index == tool.SELECTOR:
-		tool_label.text = "Selector"
-	elif tool_index == tool.TOKEN_PLACER:
-		tool_label.text = "Token"
-
-
-func change_tool() -> void:
-	tool_index = (tool_index + 1) % tool.LENGTH
-	tool_changed.emit(tool_index)
-	update_tool_visuals()
 	if tool_index == tool.SQUARE_BRUSH:
 		tool_label.text = "Square brush"
 	elif tool_index == tool.ROUND_BRUSH:

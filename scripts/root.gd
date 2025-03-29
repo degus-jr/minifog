@@ -202,6 +202,15 @@ func _input(event: InputEvent) -> void:
 			ctrl_held = event.pressed
 
 		if event.pressed:
+			if event.keycode == KEY_1:
+				select_tool(tool.SQUARE_BRUSH)
+			if event.keycode == KEY_2:
+				select_tool(tool.ROUND_BRUSH)
+			if event.keycode == KEY_3:
+				select_tool(tool.SELECTOR)
+			if event.keycode == KEY_4:
+				select_tool(tool.TOKEN_PLACER)
+
 			if event.keycode == KEY_Z:
 				undo()
 

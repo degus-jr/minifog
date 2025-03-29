@@ -2,7 +2,7 @@ extends Node2D
 
 signal on_finished_drawing
 
-enum tool { SQUARE_BRUSH, ROUND_BRUSH, SELECTOR, LENGTH }
+enum tool { SQUARE_BRUSH, ROUND_BRUSH, SELECTOR, TOKEN_PLACER, LENGTH }
 
 var m1_held := false
 var m2_held := false

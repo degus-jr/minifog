@@ -1,4 +1,4 @@
-[gd_scene load_steps=60 format=3 uid="uid://ct4l808ib7i8p"]
+[gd_scene load_steps=61 format=3 uid="uid://ct4l808ib7i8p"]
 
 [ext_resource type="Script" uid="uid://knnd3tgx0d0p" path="res://scripts/root.gd" id="1_fnbe8"]
 [ext_resource type="Script" uid="uid://dt52a1ixuy1te" path="res://scripts/panned_camera.gd" id="2_krtgi"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" uid="uid://boq1lsdp808bb" path="res://resources/SelectorIcon.png" id="6_ue7po"]
 [ext_resource type="Texture2D" uid="uid://brwhl81c4jk7u" path="res://resources/CircleIcon.png" id="7_gd4vy"]
 [ext_resource type="Texture2D" uid="uid://qng6jsq582ku" path="res://resources/Info.png" id="8_lc3x1"]
+[ext_resource type="Texture2D" uid="uid://c8rxbud4t7g6t" path="res://icon.svg" id="9_gd4vy"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xsao3"]
 resource_local_to_scene = true
@@ -576,6 +577,18 @@ icon = ExtResource("6_ue7po")
 icon_alignment = 1
 expand_icon = true
 
+[node name="TokenButton" type="Button" parent="GUI/ToolContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+tooltip_text = "Selector (Hold down to select area, release to erase)"
+theme_override_styles/hover = SubResource("StyleBoxFlat_gd4vy")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_gd4vy")
+theme_override_styles/normal = SubResource("StyleBoxFlat_tw3kd")
+icon = ExtResource("9_gd4vy")
+icon_alignment = 1
+expand_icon = true
+
 [node name="HSeparator" type="HSeparator" parent="GUI/ToolContainer/VBoxContainer"]
 layout_mode = 2
 
@@ -746,3 +759,11 @@ drag_and_drop_selection_enabled = false
 virtual_keyboard_enabled = false
 middle_mouse_paste_enabled = false
 wrap_mode = 1
+
+[node name="Panel" type="Panel" parent="."]
+z_index = -1
+layout_mode = 0
+offset_left = 295.0
+offset_top = 190.0
+offset_right = 335.0
+offset_bottom = 230.0

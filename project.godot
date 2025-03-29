@@ -21,6 +21,7 @@ config/windows_native_icon="res://icon.ico"
 [debug]
 
 gdscript/warnings/untyped_declaration=2
+gdscript/warnings/integer_division=0
 
 [display]
 

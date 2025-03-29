@@ -135,6 +135,7 @@ func _ready() -> void:
 	square_brush_button.connect("mouse_exited", square_brush_button.release_focus)
 	circle_brush_button.connect("mouse_exited", circle_brush_button.release_focus)
 	selector_button.connect("mouse_exited", selector_button.release_focus)
+	token_button.connect("mouse_exited", token_button.release_focus)
 
 	scrollbar.set_value_no_signal(brush_size)
 
@@ -251,6 +252,12 @@ func _input(event: InputEvent) -> void:
 
 	if event is InputEventMouseButton:
 		on_mouse_pos_changed.emit(get_global_mouse_position())
+
+		if event.button_index == MOUSE_BUTTON_MIDDLE:
+			if event.pressed:
+				set_cursor_shape(CursorShape.CURSOR_DRAG)
+			else:
+				update_tool_visuals()
 
 		if tool_index == tool.TOKEN_PLACER:
 			pass
@@ -419,6 +426,8 @@ func update_tool_visuals() -> void:
 		new_stylebox_normal.corner_radius_top_right = 3
 		new_stylebox_normal.corner_radius_bottom_left = 3
 		new_stylebox_normal.corner_radius_bottom_right = 3
+		new_stylebox_normal.bg_color = Color.TRANSPARENT
+		new_stylebox_normal.border_color = Color.BLACK
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 		scroll_sidebar.visible = true
@@ -440,6 +449,9 @@ func update_tool_visuals() -> void:
 		new_stylebox_normal.corner_radius_top_right = brush_size / 2
 		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
 		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		new_stylebox_normal.bg_color = Color.TRANSPARENT
+		new_stylebox_normal.border_color = Color.BLACK
+
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 		scroll_sidebar.visible = true
@@ -460,6 +472,8 @@ func update_tool_visuals() -> void:
 		new_stylebox_normal.corner_radius_top_right = 3
 		new_stylebox_normal.corner_radius_bottom_left = 3
 		new_stylebox_normal.corner_radius_bottom_right = 3
+		new_stylebox_normal.bg_color = Color.TRANSPARENT
+		new_stylebox_normal.border_color = Color.BLACK
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 		scroll_sidebar.visible = false
@@ -474,13 +488,16 @@ func update_tool_visuals() -> void:
 		selector_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
 
 	elif tool_index == tool.TOKEN_PLACER:
-		set_cursor_shape(CursorShape.CURSOR_CAN_DROP)
+		set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
+		cursor_panel.visible = true
 
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = 3
-		new_stylebox_normal.corner_radius_top_right = 3
-		new_stylebox_normal.corner_radius_bottom_left = 3
-		new_stylebox_normal.corner_radius_bottom_right = 3
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		new_stylebox_normal.bg_color = Color.LIGHT_BLUE
+		new_stylebox_normal.border_color = Color.BLUE
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 		scroll_sidebar.visible = false

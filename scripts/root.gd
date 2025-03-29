@@ -37,7 +37,7 @@ const FOG_COLOR_LIST: Array = [
 
 const UNDO_LIST_MAX_SIZE: int = 15
 
-var tool_index: int = 0
+var current_tool: int = 0
 var fog_color_index: int = 0
 var brush_size: int = 50
 var fog_image_height: int
@@ -51,6 +51,7 @@ var hovering_over_gui := false
 var performance_mode := false
 var in_sidebar := false
 
+var drawing_list: Array = []
 var undo_list: Array = []
 var corner_list: Array = []
 
@@ -69,6 +70,9 @@ var map_image: Image
 var mask_image: Image
 var light_brush: Image
 var dark_brush: Image
+
+var hovered_tokens: Array[Panel] = []
+var held_tokens: Array[Panel] = []
 
 @onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
@@ -199,31 +203,10 @@ func _input(event: InputEvent) -> void:
 
 		if event.pressed:
 			if event.keycode == KEY_Z:
-				if len(undo_list) > 1:
-					undo_list.pop_back()
-
-				var action: String = undo_list[-1][0]
-				var payload: Texture2D = undo_list[-1][1]
-
-				if action == "just_drew":
-					drawing_texture.texture = payload
-					drawing_texture.visible = true
-					dm_fog.material.set_shader_parameter("mask_texture", payload)
-					player_fog.material.set_shader_parameter("mask_texture", payload)
-
-					pretend_to_draw.emit()
-
-					drawing_texture.texture = payload
-					drawing_texture.visible = true
-					dm_fog.material.set_shader_parameter(
-						"mask_texture", drawing_viewport.get_texture()
-					)
-					player_fog.material.set_shader_parameter(
-						"mask_texture", drawing_viewport.get_texture()
-					)
+				undo()
 
 			if event.keycode == KEY_SPACE:
-				select_tool((tool_index + 1) % tool.LENGTH)
+				select_tool((current_tool + 1) % tool.LENGTH)
 
 			if event.keycode == KEY_T:
 				var id: int = (fog_color_index + 1) % len(FOG_COLOR_LIST)
@@ -259,12 +242,39 @@ func _input(event: InputEvent) -> void:
 			else:
 				update_tool_visuals()
 
-		if tool_index == tool.TOKEN_PLACER:
-			pass
+		if current_tool == tool.TOKEN_PLACER:
+			if hovering_over_gui:
+				return
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				if event.pressed:
+					if hovered_tokens.is_empty():
+						var tokens: Array[Panel] = make_token()
+						undo_list.append(["place_token", tokens])
+					else:
+						undo_list.append(["move_token", [hovered_tokens, hovered_tokens[0].position]])
+						held_tokens = hovered_tokens
+				else:
+					held_tokens = []
+
+
+
+			if event.button_index == MOUSE_BUTTON_RIGHT:
+				if not hovered_tokens.is_empty():
+
+					var dm_token : Panel = hovered_tokens[0]
+					var player_token : Panel = hovered_tokens[1]
+					dm_token.visible = false
+					player_token.visible = false
+					undo_list.append(["remove_token", [dm_token, player_token]])
+
+					hovered_tokens = []
 
 		else:
-			if tool_index == tool.SELECTOR:
-				if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+			if current_tool == tool.SELECTOR:
+				if (
+					event.button_index == MOUSE_BUTTON_LEFT
+					or event.button_index == MOUSE_BUTTON_RIGHT
+				):
 					if event.pressed:
 						if hovering_over_gui:
 							return
@@ -320,17 +330,114 @@ func _input(event: InputEvent) -> void:
 			drawing_texture.visible = false
 		on_mouse_pos_changed.emit(get_global_mouse_position())
 
+		if not held_tokens.is_empty():
+			held_tokens[0].position = get_global_mouse_position() - Vector2.ONE * held_tokens[0].size / 2
+			held_tokens[1].position = get_global_mouse_position() - Vector2.ONE * held_tokens[0].size / 2
+
+		if current_tool == tool.TOKEN_PLACER:
+			if hovered_tokens.is_empty():
+				cursor_node.visible = true
+				set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
+			else:
+				cursor_node.visible = false
+				set_cursor_shape(CursorShape.CURSOR_MOVE)
+
+
+func undo() -> void:
+	print(undo_list)
+	if undo_list.is_empty():
+		return
+
+	var last: Array = undo_list.pop_back()
+
+	var action: String = last[0]
+	var payload: Variant = last[1]
+
+	if action == "draw":
+		if len(drawing_list) > 1:
+			drawing_list.pop_back()
+
+		drawing_texture.texture = drawing_list[-1]
+		drawing_texture.visible = true
+		dm_fog.material.set_shader_parameter("mask_texture", payload)
+		player_fog.material.set_shader_parameter("mask_texture", payload)
+
+		pretend_to_draw.emit()
+
+		drawing_texture.texture = drawing_list[-1]
+		drawing_texture.visible = true
+		dm_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
+		player_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
+
+	elif action == "place_token":
+		if not is_instance_valid(payload[0]):
+			undo()
+		else:
+			payload[0].queue_free()
+			payload[1].queue_free()
+
+	elif action == "remove_token":
+		payload[0].visible = true
+		payload[1].visible = true
+
+	elif action == "move_token":
+		var pos : Vector2 = payload[1]
+		payload[0][0].position = pos
+		payload[0][1].position = pos
+
+
+func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
+	var token_list: Array[Panel] = []
+
+	var token_pos : Vector2
+	if pos == Vector2.INF:
+		token_pos = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+	else:
+		token_pos = pos
+		
+
+	for i in range(2):
+		var token: Panel = Panel.new()
+		token.size = Vector2(brush_size, brush_size)
+		token.position = token_pos
+		token.z_index = -1
+
+		var stylebox: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+		stylebox.corner_radius_top_left = brush_size / 2 - 1
+		stylebox.corner_radius_top_right = brush_size / 2 - 1
+		stylebox.corner_radius_bottom_left = brush_size / 2 - 1
+		stylebox.corner_radius_bottom_right = brush_size / 2 - 1
+		stylebox.corner_detail = 32
+		stylebox.bg_color = Color.RED
+		stylebox.border_color = Color.DARK_RED
+		token.add_theme_stylebox_override("panel", stylebox)
+
+		token.mouse_default_cursor_shape = CursorShape.CURSOR_MOVE
+
+		if i == 0:
+			add_child(token)
+		else:
+			player_window.add_child(token)
+
+		token_list.append(token)
+
+	token_list[0].tooltip_text = "Hold left mouse to drag this token, press left mouse to delete"
+	token_list[0].connect("mouse_entered", func() -> void: hovered_tokens = token_list)
+	token_list[0].connect("mouse_exited", func() -> void: hovered_tokens = [])
+
+	return token_list
+
 
 func on_scrollbar_value_changed(value: float) -> void:
-	brush_size = value
+	brush_size = int(value)
 	brush_size_changed.emit(brush_size)
 
-	if tool_index == tool.ROUND_BRUSH:
+	if current_tool == tool.ROUND_BRUSH or current_tool == tool.TOKEN_PLACER:
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 
@@ -338,12 +445,12 @@ func update_brushes(value: int = 0) -> void:
 	brush_size = min(max(BRUSH_SIZE_MIN, brush_size + value), BRUSH_SIZE_MAX)
 	brush_size_changed.emit(brush_size)
 
-	if tool_index == tool.ROUND_BRUSH:
+	if current_tool == tool.ROUND_BRUSH:
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 
@@ -355,7 +462,7 @@ func set_cursor_shape(shape: CursorShape = CursorShape.CURSOR_ARROW) -> void:
 
 
 func _process(_delta: float) -> void:
-	if tool_index != tool.SELECTOR:
+	if current_tool != tool.SELECTOR:
 		if in_sidebar:
 			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
 		else:
@@ -372,7 +479,7 @@ func _process(_delta: float) -> void:
 	player_view.size = view_size / view_transform.x[0]
 
 	queue_redraw()
-	if tool_index == tool.SELECTOR:
+	if current_tool == tool.SELECTOR:
 		draw_selector()
 
 
@@ -408,7 +515,9 @@ func draw_selector() -> void:
 
 
 func update_tool_visuals() -> void:
-	var button_list: Array = [square_brush_button, circle_brush_button, selector_button, token_button]
+	var button_list: Array = [
+		square_brush_button, circle_brush_button, selector_button, token_button
+	]
 
 	for i in range(len(button_list)):
 		var new_stylebox_pressed: StyleBox = button_list[i].get_theme_stylebox("normal").duplicate()
@@ -418,7 +527,7 @@ func update_tool_visuals() -> void:
 		new_stylebox_pressed.border_width_bottom = 0
 		button_list[i].add_theme_stylebox_override("normal", new_stylebox_pressed)
 
-	if tool_index == tool.SQUARE_BRUSH:
+	if current_tool == tool.SQUARE_BRUSH:
 		set_cursor_shape(CursorShape.CURSOR_CROSS)
 		cursor_panel.visible = true
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
@@ -441,14 +550,14 @@ func update_tool_visuals() -> void:
 		new_stylebox_pressed.border_width_bottom = 2
 		square_brush_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
 
-	elif tool_index == tool.ROUND_BRUSH:
+	elif current_tool == tool.ROUND_BRUSH:
 		set_cursor_shape(CursorShape.CURSOR_CROSS)
 		cursor_panel.visible = true
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
 		new_stylebox_normal.bg_color = Color.TRANSPARENT
 		new_stylebox_normal.border_color = Color.BLACK
 
@@ -465,7 +574,7 @@ func update_tool_visuals() -> void:
 		new_stylebox_pressed.border_width_bottom = 2
 		circle_brush_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
 
-	elif tool_index == tool.SELECTOR:
+	elif current_tool == tool.SELECTOR:
 		set_cursor_shape()
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
 		new_stylebox_normal.corner_radius_top_left = 3
@@ -487,24 +596,22 @@ func update_tool_visuals() -> void:
 		new_stylebox_pressed.border_width_bottom = 2
 		selector_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
 
-	elif tool_index == tool.TOKEN_PLACER:
+	elif current_tool == tool.TOKEN_PLACER:
 		set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
 		cursor_panel.visible = true
 
 		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2
-		new_stylebox_normal.bg_color = Color.LIGHT_BLUE
-		new_stylebox_normal.border_color = Color.BLUE
+		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
+		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
+		new_stylebox_normal.bg_color = Color.RED
+		new_stylebox_normal.border_color = Color.DARK_RED
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
-		scroll_sidebar.visible = false
+		scroll_sidebar.visible = true
 
-		var new_stylebox_pressed: StyleBox = (
-			token_button.get_theme_stylebox("normal").duplicate()
-		)
+		var new_stylebox_pressed: StyleBox = token_button.get_theme_stylebox("normal").duplicate()
 		new_stylebox_pressed.border_width_left = 2
 		new_stylebox_pressed.border_width_right = 2
 		new_stylebox_pressed.border_width_top = 2
@@ -517,10 +624,13 @@ func copy_viewport_texture() -> void:
 	image.convert(Image.FORMAT_R8)
 	var image_texture: Texture2D = ImageTexture.new()
 	image_texture = ImageTexture.create_from_image(image)
-	undo_list.append(["just_drew", image_texture])
+	drawing_list.append(image_texture)
+	undo_list.append(["draw", null])
 
-	if len(undo_list) > UNDO_LIST_MAX_SIZE:
-		undo_list.pop_front()
+	print(drawing_list)
+
+	if len(drawing_list) > UNDO_LIST_MAX_SIZE:
+		drawing_list.pop_front()
 
 
 func update_fog_texture(color: Color) -> void:
@@ -621,7 +731,7 @@ func load_map(path: String) -> void:
 
 	get_fog_size(map_image.get_size())
 
-	undo_list.append(["just_drew", mask_image_texture])
+	drawing_list.append(mask_image_texture)
 
 	drawing_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
 
@@ -669,17 +779,17 @@ func are_we_inside_sidebar() -> void:
 
 
 func select_tool(index: int) -> void:
-	tool_index = index
+	current_tool = index
 	tool_changed.emit(index)
 	update_tool_visuals()
 
-	if tool_index == tool.SQUARE_BRUSH:
+	if current_tool == tool.SQUARE_BRUSH:
 		tool_label.text = "Square brush"
-	elif tool_index == tool.ROUND_BRUSH:
+	elif current_tool == tool.ROUND_BRUSH:
 		tool_label.text = "Round brush"
-	elif tool_index == tool.SELECTOR:
+	elif current_tool == tool.SELECTOR:
 		tool_label.text = "Selector"
-	elif tool_index == tool.TOKEN_PLACER:
+	elif current_tool == tool.TOKEN_PLACER:
 		tool_label.text = "Token"
 
 

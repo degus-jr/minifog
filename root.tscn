@@ -759,11 +759,3 @@ drag_and_drop_selection_enabled = false
 virtual_keyboard_enabled = false
 middle_mouse_paste_enabled = false
 wrap_mode = 1
-
-[node name="Panel" type="Panel" parent="."]
-z_index = -1
-layout_mode = 0
-offset_left = 295.0
-offset_top = 190.0
-offset_right = 335.0
-offset_bottom = 230.0

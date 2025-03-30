@@ -35,10 +35,20 @@ const FOG_COLOR_LIST: Array = [
 	Color.LIME,
 ]
 
-const UNDO_LIST_MAX_SIZE: int = 15
+const TOKEN_COLOR_LIST: Array = [
+	[Color.RED, Color.DARK_RED],
+	[Color.BLUE, Color.DARK_BLUE],
+	[Color.GREEN, Color.DARK_GREEN],
+	[Color.YELLOW, Color.DARK_ORANGE],
+]
+
+
+
+const DRAWING_LIST_MAX_SIZE: int = 15
 
 var current_tool: int = 0
 var fog_color_index: int = 0
+var token_color_index: int = 0
 var brush_size: int = 50
 var fog_image_height: int
 var fog_image_width: int
@@ -210,6 +220,11 @@ func _input(event: InputEvent) -> void:
 				select_tool(tool.SELECTOR)
 			if event.keycode == KEY_4:
 				select_tool(tool.TOKEN_PLACER)
+
+			if event.keycode == KEY_C:
+				token_color_index = (token_color_index + 1) % len(TOKEN_COLOR_LIST)
+				print(TOKEN_COLOR_LIST[token_color_index])
+				update_tool_visuals()
 
 			if event.keycode == KEY_Z:
 				undo()
@@ -417,8 +432,8 @@ func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
 		stylebox.corner_radius_bottom_left = brush_size / 2 - 1
 		stylebox.corner_radius_bottom_right = brush_size / 2 - 1
 		stylebox.corner_detail = 32
-		stylebox.bg_color = Color.RED
-		stylebox.border_color = Color.DARK_RED
+		stylebox.bg_color = TOKEN_COLOR_LIST[token_color_index][0]
+		stylebox.border_color = TOKEN_COLOR_LIST[token_color_index][1]
 		token.add_theme_stylebox_override("panel", stylebox)
 
 		token.mouse_default_cursor_shape = CursorShape.CURSOR_MOVE
@@ -614,8 +629,8 @@ func update_tool_visuals() -> void:
 		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
 		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
 		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
-		new_stylebox_normal.bg_color = Color.RED
-		new_stylebox_normal.border_color = Color.DARK_RED
+		new_stylebox_normal.bg_color = TOKEN_COLOR_LIST[token_color_index][0]
+		new_stylebox_normal.border_color = TOKEN_COLOR_LIST[token_color_index][1]
 		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
 
 		scroll_sidebar.visible = true
@@ -636,7 +651,7 @@ func copy_viewport_texture() -> void:
 	drawing_list.append(image_texture)
 	undo_list.append(["draw", null])
 
-	if len(drawing_list) > UNDO_LIST_MAX_SIZE:
+	if len(drawing_list) > DRAWING_LIST_MAX_SIZE:
 		drawing_list.pop_front()
 
 
@@ -681,6 +696,8 @@ func load_map(path: String) -> void:
 		warning.popup_centered()
 		return
 
+	drawing_list = []
+
 	if path.ends_with(".map"):
 		var reader: ZIPReader = ZIPReader.new()
 		var error := reader.open(path)
@@ -698,6 +715,7 @@ func load_map(path: String) -> void:
 		mask_image_texture = ImageTexture.new()
 		mask_image_texture.set_image(mask_image)
 		drawing_texture.texture = mask_image_texture
+
 
 		map_image = Image.new()
 		map_image.load_png_from_buffer(reader.read_file("map.png"))
@@ -738,6 +756,7 @@ func load_map(path: String) -> void:
 
 	get_fog_size(map_image.get_size())
 
+	print(drawing_list)
 	drawing_list.append(mask_image_texture)
 
 	drawing_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE

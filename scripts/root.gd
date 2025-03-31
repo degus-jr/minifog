@@ -16,6 +16,8 @@ const PlasmaTexture = preload("res://resources/Plasma.jpg")
 const CircleIcon = preload("res://resources/CircleIcon.png")
 const SquareIcon = preload("res://resources/SquareIcon.png")
 const SelectorIcon = preload("res://resources/SelectorIcon.png")
+const InfoDegus = preload("res://resources/Info.png")
+const PlayerInfoDegus = preload("res://resources/PlayerInfo.png")
 
 const BRUSH_SIZE_MIN: int = 5
 const BRUSH_SIZE_MAX: int = 500
@@ -109,10 +111,6 @@ var stylebox_cursor_normal: StyleBox
 
 # @onready var separator : HSeparator = $GUI/ToolContainer/VBoxContainer/Separator
 @onready var tool_label: Label = $GUI/ToolContainer/VBoxContainer/ToolLabel
-@onready var info_degus: TextureRect = $InfoDegus
-
-@onready var text: TextEdit = $TextEdit
-@onready var player_text: TextEdit = $PlayerWindow/TextEdit
 
 @onready var load_dialog: FileDialog = $LoadDialog
 @onready var save_dialog: FileDialog = $SaveDialog
@@ -176,7 +174,6 @@ func _ready() -> void:
 	stylebox_button_not_pressed.border_width_top = 0
 	stylebox_button_not_pressed.border_width_bottom = 0
 
-	
 	stylebox_cursor_normal = cursor_panel.get_theme_stylebox("panel").duplicate()
 	stylebox_cursor_normal.corner_radius_top_left = 3
 	stylebox_cursor_normal.corner_radius_top_right = 3
@@ -190,7 +187,7 @@ func _ready() -> void:
 	drawing_node.connect("on_finished_drawing", wait_one_frame_and_then_copy)
 
 	update_tool_visuals()
-	select_tool(0)
+	select_tool(tool.SQUARE_BRUSH)
 
 	var gui_list: Array = [
 		menu_bar,
@@ -231,6 +228,8 @@ func _ready() -> void:
 
 	if len(args) > 0:
 		load_map(args[0])
+	else:
+		load_map("noargs")
 
 func update_cursor_position() -> void:
 	if current_tool != tool.SELECTOR:
@@ -247,8 +246,6 @@ func _input(event: InputEvent) -> void:
 		if event.pressed:
 			if event.keycode == KEY_L:
 				load_dialog.popup()
-	if current_file_path == "":
-		return
 
 	update_cursor_position()
 
@@ -470,7 +467,18 @@ func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
 		
 
 	for i in range(2):
-		var token: Panel = Panel.new()
+		var token := Panel.new()
+
+		var label := Label.new()
+		label.text = "1"
+
+		label.size = Vector2(brush_size, brush_size) / 2
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.position = Vector2(brush_size, brush_size) / 4
+
+		token.add_child(label)
+
 		token.size = Vector2(brush_size, brush_size)
 		token.position = token_pos
 		token.z_index = -1
@@ -672,76 +680,111 @@ func get_fog_size(image_size: Vector2i) -> void:
 
 
 func load_map(path: String) -> void:
-	if not (
-		path.ends_with(".jpg")
-		or path.ends_with(".jpeg")
-		or path.ends_with(".png")
-		or path.ends_with(".map")
-	):
-		warning.title = "Invalid file format"
-		warning.dialog_text = "File must be .jpg, .jpeg, .png or .map"
-		warning.popup_centered()
-		return
-
 	drawing_list = []
-
-	if path.ends_with(".map"):
-		var reader: ZIPReader = ZIPReader.new()
-		var error := reader.open(path)
-
-		if error != OK:
-			warning.title = "Error"
-			warning.dialog_text = "Error loading map"
-			warning.popup_centered()
-			return
-
-		mask_image = Image.new()
-		mask_image.load_png_from_buffer(reader.read_file("mask.png"))
-		mask_image.convert(Image.FORMAT_R8)
-
-		mask_image_texture = ImageTexture.new()
-		mask_image_texture.set_image(mask_image)
-		drawing_texture.texture = mask_image_texture
-
-
-		map_image = Image.new()
-		map_image.load_png_from_buffer(reader.read_file("map.png"))
-		map_image.convert(Image.FORMAT_RGB8)
-
-		reader.close()
-
-	else:
-		map_image = Image.new()
-		map_image.load(path)
-		map_image.convert(Image.FORMAT_RGB8)
-
-		var map_image_width: int = map_image.get_size()[0]
-		var map_image_height: int = map_image.get_size()[1]
-
-		if map_image_width > MAX_IMAGE_SIZE or map_image_height > MAX_IMAGE_SIZE:
-			var ratio: float
-			if map_image_width > map_image_height:
-				ratio = MAX_IMAGE_SIZE / map_image_width
-			else:
-				ratio = MAX_IMAGE_SIZE / map_image_height
-
-			map_image.resize(
-				map_image_width * ratio,
-				map_image_height * ratio,
-				Image.Interpolation.INTERPOLATE_CUBIC
-			)
-
-		get_fog_size(map_image.get_size())
-
+	if path == "noargs":
+		get_fog_size(InfoDegus.get_size())
 		mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_R8)
 		mask_image.fill(Color.RED)
 
 		mask_image_texture = ImageTexture.create_from_image(mask_image)
 		drawing_texture.texture = mask_image_texture
 
-	current_file_path = path
+		
+		dm_background.texture = InfoDegus
+		player_background.texture = PlayerInfoDegus
 
-	get_fog_size(map_image.get_size())
+		dm_fog.material.set_shader_parameter("alpha_ceil", 0.2)
+		player_fog.material.set_shader_parameter("alpha_ceil", 0.3)
+
+	else:
+		if not (
+			path.ends_with(".jpg")
+			or path.ends_with(".jpeg")
+			or path.ends_with(".png")
+			or path.ends_with(".map")
+		):
+			warning.title = "Invalid file format"
+			warning.dialog_text = "File must be .jpg, .jpeg, .png or .map"
+			warning.popup_centered()
+			return
+
+
+		if path.ends_with(".map"):
+			var reader: ZIPReader = ZIPReader.new()
+			var error := reader.open(path)
+
+			if error != OK:
+				warning.title = "Error"
+				warning.dialog_text = "Error loading .map file. Error code: %s" % error
+				warning.popup_centered()
+				return
+
+			mask_image = Image.new()
+			mask_image.load_png_from_buffer(reader.read_file("mask.png"))
+			mask_image.convert(Image.FORMAT_R8)
+
+			mask_image_texture = ImageTexture.new()
+			mask_image_texture.set_image(mask_image)
+			drawing_texture.texture = mask_image_texture
+
+
+			map_image = Image.new()
+			map_image.load_png_from_buffer(reader.read_file("map.png"))
+			map_image.convert(Image.FORMAT_RGB8)
+
+			reader.close()
+
+		else:
+			map_image = Image.new()
+			var error := map_image.load(path)
+
+			if error != OK:
+				warning.title = "Error"
+				if error == ERR_FILE_NOT_FOUND:
+					warning.dialog_text = "File not found"
+				else:
+					warning.dialog_text = "Error loading image. Error code: %s" % error
+				warning.popup_centered()
+				return
+			print(error)
+			map_image.convert(Image.FORMAT_RGB8)
+
+			var map_image_width: int = map_image.get_size()[0]
+			var map_image_height: int = map_image.get_size()[1]
+
+			if map_image_width > MAX_IMAGE_SIZE or map_image_height > MAX_IMAGE_SIZE:
+				var ratio: float
+				if map_image_width > map_image_height:
+					ratio = MAX_IMAGE_SIZE / map_image_width
+				else:
+					ratio = MAX_IMAGE_SIZE / map_image_height
+
+				map_image.resize(
+					map_image_width * ratio,
+					map_image_height * ratio,
+					Image.Interpolation.INTERPOLATE_CUBIC
+				)
+
+			get_fog_size(map_image.get_size())
+
+			mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_R8)
+			mask_image.fill(Color.RED)
+
+			mask_image_texture = ImageTexture.create_from_image(mask_image)
+			drawing_texture.texture = mask_image_texture
+
+		var image_texture: Texture2D = ImageTexture.new()
+		image_texture.set_image(map_image)
+		dm_background.texture = image_texture
+		player_background.texture = image_texture
+
+		player_view.visible = true
+		player_view_text.visible = true
+		current_file_path = path
+
+		dm_fog.material.set_shader_parameter("alpha_ceil", 0.5)
+		player_fog.material.set_shader_parameter("alpha_ceil", 1)
+
 
 	print(drawing_list)
 	drawing_list.append(mask_image_texture)
@@ -760,25 +803,12 @@ func load_map(path: String) -> void:
 	dm_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
 	player_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
 
-	player_view.visible = true
-	player_view_text.visible = true
 
 	move_background(player_root)
 	move_background(dm_root)
 
-	var image_texture: Texture2D = ImageTexture.new()
-	image_texture.set_image(map_image)
-	dm_background.texture = image_texture
-	player_background.texture = image_texture
 
 	move_player_view()
-
-	if is_instance_valid(text):
-		text.queue_free()
-	if is_instance_valid(info_degus):
-		info_degus.queue_free()
-	if is_instance_valid(player_text):
-		player_text.queue_free()
 
 
 func wait_one_frame_and_then_copy() -> void:
@@ -806,8 +836,14 @@ func _process(_delta: float) -> void:
 
 
 func move_background(background_node: Node2D) -> void:
-	var map_image_width: int = map_image.get_size()[0]
-	var map_image_height: int = map_image.get_size()[1]
+	var map_image_width: int
+	var map_image_height: int
+	if map_image != null:
+		map_image_width = map_image.get_size()[0]
+		map_image_height = map_image.get_size()[1]
+	else:
+		map_image_width = int(InfoDegus.get_size()[0])
+		map_image_height = int(InfoDegus.get_size()[1])
 
 	var x_diff: float = fog_image_width - map_image_width
 	var y_diff: float = fog_image_height - map_image_height
@@ -867,8 +903,6 @@ func _on_file_id_pressed(id: int) -> void:
 
 
 func update_colorscheme(id: int) -> void:
-	if current_file_path == "":
-		return
 	fog_color_index = id
 	update_fog_texture(FOG_COLOR_LIST[fog_color_index])
 	colorscheme_menu.set_item_checked(id, true)

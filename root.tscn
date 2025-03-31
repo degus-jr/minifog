@@ -535,10 +535,10 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_1tktk")
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Label1" type="Label" parent="GUI/ToolContainer/VBoxContainer"]
+[node name="Label" type="Label" parent="GUI/ToolContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0, 1)
-text = "Tool:"
+text = "Tools:"
 horizontal_alignment = 1
 
 [node name="SquareBrushButton" type="Button" parent="GUI/ToolContainer/VBoxContainer"]
@@ -611,7 +611,10 @@ grow_horizontal = 0
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_1tktk")
 
-[node name="VScrollBar" type="VScrollBar" parent="GUI/ScrollBarContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="GUI/ScrollBarContainer"]
+layout_mode = 2
+
+[node name="VScrollBar" type="VScrollBar" parent="GUI/ScrollBarContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 1
 size_flags_vertical = 3
@@ -621,6 +624,12 @@ min_value = 5.0
 max_value = 500.0
 page = 60.0
 value = 5.0
+
+[node name="Label" type="Label" parent="GUI/ScrollBarContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+text = "Size"
+horizontal_alignment = 1
 
 [node name="DmRoot" type="Node2D" parent="."]
 

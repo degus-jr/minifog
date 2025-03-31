@@ -73,6 +73,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_MASK_MIDDLE:
 			position -= event.relative / zoom
+			on_mouse_pos_changed.emit(get_global_mouse_position())
 
 
 func _physics_process(delta : float) -> void:

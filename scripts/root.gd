@@ -53,6 +53,9 @@ var brush_size: int = 50
 var fog_image_height: int
 var fog_image_width: int
 
+var last_brush_size: int = 50
+var last_token_size: int = 50
+
 var ctrl_held := false
 var m1_held := false
 var m2_held := false
@@ -84,6 +87,11 @@ var dark_brush: Image
 var hovered_tokens: Array[Panel] = []
 var held_tokens: Array[Panel] = []
 
+var stylebox_button_pressed: StyleBox
+var stylebox_button_not_pressed: StyleBox
+var stylebox_cursor_normal: StyleBox
+
+
 @onready var menu_bar: MenuBar = $GUI/MenuBar
 @onready var file_menu: PopupMenu = $GUI/MenuBar/File
 @onready var help_menu: PopupMenu = $GUI/MenuBar/Help
@@ -92,7 +100,8 @@ var held_tokens: Array[Panel] = []
 @onready var tool_sidebar: PanelContainer = $GUI/ToolContainer
 @onready var scroll_sidebar: PanelContainer = $GUI/ScrollBarContainer
 
-@onready var scrollbar: VScrollBar = $GUI/ScrollBarContainer/VScrollBar
+@onready var scrollbar: VScrollBar = $GUI/ScrollBarContainer/VBoxContainer/VScrollBar
+@onready var scrollbar_label: Label = $GUI/ScrollBarContainer/VBoxContainer/Label
 @onready var square_brush_button: Button = $GUI/ToolContainer/VBoxContainer/SquareBrushButton
 @onready var circle_brush_button: Button = $GUI/ToolContainer/VBoxContainer/CircleBrushButton
 @onready var selector_button: Button = $GUI/ToolContainer/VBoxContainer/SelectorButton
@@ -135,7 +144,10 @@ func _ready() -> void:
 
 	load_dialog.connect("file_selected", func(path: String) -> void: load_map(path))
 	save_dialog.connect("file_selected", func(path: String) -> void: write_map(path))
-	scrollbar.connect("value_changed", on_scrollbar_value_changed)
+	scrollbar.connect("value_changed", update_brush_size)
+
+
+	player_camera.connect("on_mouse_pos_changed", move_player_view)
 
 	file_menu.connect("id_pressed", _on_file_id_pressed)
 	help_menu.connect("id_pressed", _on_help_id_pressed)
@@ -150,6 +162,27 @@ func _ready() -> void:
 	circle_brush_button.connect("mouse_exited", circle_brush_button.release_focus)
 	selector_button.connect("mouse_exited", selector_button.release_focus)
 	token_button.connect("mouse_exited", token_button.release_focus)
+
+	stylebox_button_pressed = selector_button.get_theme_stylebox("normal").duplicate()
+	stylebox_button_pressed.border_width_left = 2
+	stylebox_button_pressed.border_width_right = 2
+	stylebox_button_pressed.border_width_top = 2
+	stylebox_button_pressed.border_width_bottom = 2
+
+	stylebox_button_not_pressed = selector_button.get_theme_stylebox("normal").duplicate()
+	stylebox_button_not_pressed.border_width_left = 0
+	stylebox_button_not_pressed.border_width_right = 0
+	stylebox_button_not_pressed.border_width_top = 0
+	stylebox_button_not_pressed.border_width_bottom = 0
+
+	
+	stylebox_cursor_normal = cursor_panel.get_theme_stylebox("panel").duplicate()
+	stylebox_cursor_normal.corner_radius_top_left = 3
+	stylebox_cursor_normal.corner_radius_top_right = 3
+	stylebox_cursor_normal.corner_radius_bottom_left = 3
+	stylebox_cursor_normal.corner_radius_bottom_right = 3
+	stylebox_cursor_normal.bg_color = Color.TRANSPARENT
+	stylebox_cursor_normal.border_color = Color.BLACK
 
 	scrollbar.set_value_no_signal(brush_size)
 
@@ -189,7 +222,7 @@ func _ready() -> void:
 
 	load_dialog.add_filter("*.png, *.jpg, *.jpeg, *.map", "Images / .map files")
 	save_dialog.add_filter("*.map", ".map files")
-	update_brushes()
+	update_brush_size(brush_size)
 
 	cursor_panel.size = Vector2(brush_size, brush_size)
 
@@ -207,101 +240,54 @@ func _input(event: InputEvent) -> void:
 	if current_file_path == "":
 		return
 
+	if current_tool != tool.SELECTOR:
+		if in_sidebar:
+			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
+		else:
+			cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+	else:
+		reshape_selector_cursor_panel()
+
 	if event is InputEventKey:
-		if event.keycode == KEY_CTRL:
-			ctrl_held = event.pressed
-
-		if event.pressed:
-			if event.keycode == KEY_1:
-				select_tool(tool.SQUARE_BRUSH)
-			if event.keycode == KEY_2:
-				select_tool(tool.ROUND_BRUSH)
-			if event.keycode == KEY_3:
-				select_tool(tool.SELECTOR)
-			if event.keycode == KEY_4:
-				select_tool(tool.TOKEN_PLACER)
-
-			if event.keycode == KEY_C:
-				token_color_index = (token_color_index + 1) % len(TOKEN_COLOR_LIST)
-				print(TOKEN_COLOR_LIST[token_color_index])
-				update_tool_visuals()
-
-			if event.keycode == KEY_Z:
-				undo()
-
-			if event.keycode == KEY_SPACE:
-				select_tool((current_tool + 1) % tool.LENGTH)
-
-			if event.keycode == KEY_T:
-				var id: int = (fog_color_index + 1) % len(FOG_COLOR_LIST)
-				update_colorscheme(id)
-
-			if event.keycode == KEY_P:
-				performance_mode = not performance_mode
-				if performance_mode:
-					Engine.max_fps = 30
-				else:
-					Engine.max_fps = 60
-
-			if event.keycode == KEY_S:
-				if ctrl_held:
-					if current_file_path != "":
-						if current_file_path.ends_with(".map"):
-							set_cursor_shape(CursorShape.CURSOR_WAIT)
-							saving_label.visible = true
-							await get_tree().process_frame
-							await get_tree().process_frame
-							write_map(current_file_path)
-							saving_label.visible = false
-							set_cursor_shape()
-						else:
-							save_dialog.popup()
+		process_keypresses(event)
 
 	if event is InputEventMouseButton:
 		on_mouse_pos_changed.emit(get_global_mouse_position())
 
-		if event.button_index == MOUSE_BUTTON_MIDDLE:
-			if event.pressed:
-				set_cursor_shape(CursorShape.CURSOR_DRAG)
-			else:
-				update_tool_visuals()
+		# dont process clicks when over gui, but process releases
+		if hovering_over_gui and event.pressed:
+			return
 
-		if current_tool == tool.TOKEN_PLACER:
-			if hovering_over_gui:
-				return
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				if event.pressed:
-					if hovered_tokens.is_empty():
-						var tokens: Array[Panel] = make_token()
-						undo_list.append(["place_token", tokens])
+		match current_tool:
+			tool.TOKEN_PLACER:
+				if event.button_index == MOUSE_BUTTON_LEFT:
+					if event.pressed:
+						if hovered_tokens.is_empty():
+							var tokens: Array[Panel] = make_token()
+							undo_list.append(["place_token", tokens])
+						else:
+							undo_list.append(["move_token", [hovered_tokens, hovered_tokens[0].position]])
+							held_tokens = hovered_tokens
 					else:
-						undo_list.append(["move_token", [hovered_tokens, hovered_tokens[0].position]])
-						held_tokens = hovered_tokens
-				else:
-					held_tokens = []
+						held_tokens = []
 
+				if event.button_index == MOUSE_BUTTON_RIGHT:
+					if not hovered_tokens.is_empty():
 
+						var dm_token : Panel = hovered_tokens[0]
+						var player_token : Panel = hovered_tokens[1]
+						dm_token.visible = false
+						player_token.visible = false
+						undo_list.append(["remove_token", [dm_token, player_token]])
 
-			if event.button_index == MOUSE_BUTTON_RIGHT:
-				if not hovered_tokens.is_empty():
+						hovered_tokens = []
 
-					var dm_token : Panel = hovered_tokens[0]
-					var player_token : Panel = hovered_tokens[1]
-					dm_token.visible = false
-					player_token.visible = false
-					undo_list.append(["remove_token", [dm_token, player_token]])
-
-					hovered_tokens = []
-
-		else:
-			if current_tool == tool.SELECTOR:
+			tool.SELECTOR:
 				if (
 					event.button_index == MOUSE_BUTTON_LEFT
 					or event.button_index == MOUSE_BUTTON_RIGHT
 				):
 					if event.pressed:
-						if hovering_over_gui:
-							return
 						selecting = true
 						selector_start_pos = get_global_mouse_position()
 
@@ -316,43 +302,48 @@ func _input(event: InputEvent) -> void:
 					elif event.button_index == MOUSE_BUTTON_RIGHT:
 						m2_held = event.pressed
 						on_m2_pressed.emit(event.pressed)
-				return
+					reshape_selector_cursor_panel()
 
-			if event.button_index == MOUSE_BUTTON_LEFT:
-				if hovering_over_gui and event.pressed:
-					return
-				drawing_texture.visible = false
+			_:
+				if event.button_index == MOUSE_BUTTON_LEFT:
+					drawing_texture.visible = false
 
-				if event.pressed == false and m1_held:
-					copy_viewport_texture()
-				m1_held = event.pressed
-				on_m1_pressed.emit(event.pressed)
+					if event.pressed == false and m1_held:
+						copy_viewport_texture()
+					m1_held = event.pressed
+					on_m1_pressed.emit(event.pressed)
 
-			if event.button_index == MOUSE_BUTTON_RIGHT:
-				if hovering_over_gui and event.pressed:
-					return
-				drawing_texture.visible = false
+				if event.button_index == MOUSE_BUTTON_RIGHT:
+					drawing_texture.visible = false
 
-				if event.pressed == false and m2_held:
-					copy_viewport_texture()
+					if event.pressed == false and m2_held:
+						copy_viewport_texture()
 
-				m2_held = event.pressed
-				on_m2_pressed.emit(event.pressed)
+					m2_held = event.pressed
+					on_m2_pressed.emit(event.pressed)
 
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			if ctrl_held:
-				update_brushes(-5)
-				scrollbar.set_value_no_signal(brush_size)
+		match event.button_index:
+			MOUSE_BUTTON_MIDDLE:
+				if event.pressed:
+					set_cursor_shape(CursorShape.CURSOR_DRAG)
+				else:
+					update_tool_visuals()
 
-		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			if ctrl_held:
-				update_brushes(5)
-				scrollbar.set_value_no_signal(brush_size)
+			MOUSE_BUTTON_WHEEL_UP:
+				if ctrl_held:
+					update_brush_size(min(max(BRUSH_SIZE_MIN, brush_size - 5), BRUSH_SIZE_MAX))
+					scrollbar.set_value_no_signal(brush_size)
+
+			MOUSE_BUTTON_WHEEL_DOWN:
+				if ctrl_held:
+					update_brush_size(min(max(BRUSH_SIZE_MIN, brush_size + 5), BRUSH_SIZE_MAX))
+					scrollbar.set_value_no_signal(brush_size)
 
 	elif event is InputEventMouseMotion:
+		on_mouse_pos_changed.emit(get_global_mouse_position())
+
 		if m1_held or m2_held:
 			drawing_texture.visible = false
-		on_mouse_pos_changed.emit(get_global_mouse_position())
 
 		if not held_tokens.is_empty():
 			held_tokens[0].position = get_global_mouse_position() - Vector2.ONE * held_tokens[0].size / 2
@@ -365,6 +356,60 @@ func _input(event: InputEvent) -> void:
 			else:
 				cursor_node.visible = false
 				set_cursor_shape(CursorShape.CURSOR_MOVE)
+
+
+func process_keypresses(event: InputEventKey) -> void:
+	if event.keycode == KEY_CTRL:
+		ctrl_held = event.pressed
+
+	if event.pressed:
+		match event.keycode:
+			KEY_1:
+				select_tool(tool.SQUARE_BRUSH)
+
+			KEY_2:
+				select_tool(tool.ROUND_BRUSH)
+
+			KEY_3:
+				select_tool(tool.SELECTOR)
+
+			KEY_4:
+				select_tool(tool.TOKEN_PLACER)
+
+			KEY_C:
+				token_color_index = (token_color_index + 1) % len(TOKEN_COLOR_LIST)
+				print(TOKEN_COLOR_LIST[token_color_index])
+				update_tool_visuals()
+
+			KEY_Z:
+				undo()
+
+			KEY_SPACE:
+				select_tool((current_tool + 1) % tool.LENGTH)
+
+			KEY_T:
+				var id: int = (fog_color_index + 1) % len(FOG_COLOR_LIST)
+				update_colorscheme(id)
+
+			KEY_P:
+				performance_mode = not performance_mode
+				if performance_mode:
+					Engine.max_fps = 30
+				else:
+					Engine.max_fps = 60
+
+			KEY_S:
+				if ctrl_held:
+					if current_file_path.ends_with(".map"):
+						set_cursor_shape(CursorShape.CURSOR_WAIT)
+						saving_label.visible = true
+						await get_tree().process_frame
+						await get_tree().process_frame
+						write_map(current_file_path)
+						saving_label.visible = false
+						set_cursor_shape()
+					else:
+						save_dialog.popup()
 
 
 func undo() -> void:
@@ -426,15 +471,15 @@ func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
 		token.position = token_pos
 		token.z_index = -1
 
-		var stylebox: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		stylebox.corner_radius_top_left = brush_size / 2 - 1
-		stylebox.corner_radius_top_right = brush_size / 2 - 1
-		stylebox.corner_radius_bottom_left = brush_size / 2 - 1
-		stylebox.corner_radius_bottom_right = brush_size / 2 - 1
-		stylebox.corner_detail = 32
-		stylebox.bg_color = TOKEN_COLOR_LIST[token_color_index][0]
-		stylebox.border_color = TOKEN_COLOR_LIST[token_color_index][1]
-		token.add_theme_stylebox_override("panel", stylebox)
+		var stylebox_cursor: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+		stylebox_cursor.corner_radius_top_left = brush_size / 2 - 1
+		stylebox_cursor.corner_radius_top_right = brush_size / 2 - 1
+		stylebox_cursor.corner_radius_bottom_left = brush_size / 2 - 1
+		stylebox_cursor.corner_radius_bottom_right = brush_size / 2 - 1
+		stylebox_cursor.corner_detail = 32
+		stylebox_cursor.bg_color = TOKEN_COLOR_LIST[token_color_index][0]
+		stylebox_cursor.border_color = TOKEN_COLOR_LIST[token_color_index][1]
+		token.add_theme_stylebox_override("panel", stylebox_cursor)
 
 		token.mouse_default_cursor_shape = CursorShape.CURSOR_MOVE
 
@@ -452,31 +497,19 @@ func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
 	return token_list
 
 
-func on_scrollbar_value_changed(value: float) -> void:
+func update_brush_size(value: float) -> void:
 	brush_size = int(value)
 	brush_size_changed.emit(brush_size)
 
-	if current_tool == tool.ROUND_BRUSH or current_tool == tool.TOKEN_PLACER:
-		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
-		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
+	scrollbar_label.text = str(int(value))
 
+	if current_tool == tool.TOKEN_PLACER:
+		last_token_size = brush_size
+	else:
+		last_brush_size = brush_size
 
-func update_brushes(value: int = 0) -> void:
-	brush_size = min(max(BRUSH_SIZE_MIN, brush_size + value), BRUSH_SIZE_MAX)
-	brush_size_changed.emit(brush_size)
-
-	if current_tool == tool.ROUND_BRUSH or current_tool == tool.TOKEN_PLACER:
-		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
-		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
-
+	cursor_panel.size = Vector2(brush_size, brush_size)
+	update_tool_visuals()
 
 func set_cursor_shape(shape: CursorShape = CursorShape.CURSOR_ARROW) -> void:
 	mouse_default_cursor_shape = shape
@@ -485,40 +518,15 @@ func set_cursor_shape(shape: CursorShape = CursorShape.CURSOR_ARROW) -> void:
 	player_view_text.mouse_default_cursor_shape = shape
 
 
-func _process(_delta: float) -> void:
-	if current_tool != tool.SELECTOR:
-		if in_sidebar:
-			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
-		else:
-			cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
-		cursor_panel.size = Vector2(brush_size, brush_size)
-
-	if current_file_path == "":
-		return
-
+func move_player_view(_pos : Vector2) -> void:
 	var view_size: Vector2 = player_window.get_visible_rect().size
 	var view_transform: Transform2D = player_window.get_canvas_transform()
 
 	player_view.position = view_transform.origin / -view_transform.x[0]
 	player_view.size = view_size / view_transform.x[0]
 
-	queue_redraw()
-	if current_tool == tool.SELECTOR:
-		draw_selector()
 
-
-# func _draw() -> void:
-# 	if current_file_path == "":
-# 		return
-#
-# 	var view_size : Vector2 = player_window.get_visible_rect().size
-# 	var view_position : Vector2 = player_window.get_canvas_transform().origin
-# 	var view_rect : Rect2 = Rect2(view_position * -1, view_size)
-#
-# 	draw_rect(view_rect, Color(0, 0, 0, 1))
-
-
-func draw_selector() -> void:
+func reshape_selector_cursor_panel() -> void:
 	if selecting:
 		cursor_panel.visible = true
 	else:
@@ -543,105 +551,80 @@ func update_tool_visuals() -> void:
 		square_brush_button, circle_brush_button, selector_button, token_button
 	]
 
+	# make all buttons unpressed
 	for i in range(len(button_list)):
-		var new_stylebox_pressed: StyleBox = button_list[i].get_theme_stylebox("normal").duplicate()
-		new_stylebox_pressed.border_width_left = 0
-		new_stylebox_pressed.border_width_right = 0
-		new_stylebox_pressed.border_width_top = 0
-		new_stylebox_pressed.border_width_bottom = 0
-		button_list[i].add_theme_stylebox_override("normal", new_stylebox_pressed)
+		button_list[i].add_theme_stylebox_override("normal", stylebox_button_not_pressed)
 
-	if current_tool == tool.SQUARE_BRUSH:
-		set_cursor_shape(CursorShape.CURSOR_CROSS)
-		cursor_panel.visible = true
-		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = 3
-		new_stylebox_normal.corner_radius_top_right = 3
-		new_stylebox_normal.corner_radius_bottom_left = 3
-		new_stylebox_normal.corner_radius_bottom_right = 3
-		new_stylebox_normal.bg_color = Color.TRANSPARENT
-		new_stylebox_normal.border_color = Color.BLACK
-		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
+	scroll_sidebar.visible = true
+	cursor_panel.visible = true
 
-		scroll_sidebar.visible = true
+	scrollbar.set_value_no_signal(last_brush_size)
+	brush_size = last_brush_size
+	brush_size_changed.emit(brush_size)
+	scrollbar_label.text = str(int(brush_size))
 
-		var new_stylebox_pressed: StyleBox = (
-			square_brush_button.get_theme_stylebox("normal").duplicate()
-		)
-		new_stylebox_pressed.border_width_left = 2
-		new_stylebox_pressed.border_width_right = 2
-		new_stylebox_pressed.border_width_top = 2
-		new_stylebox_pressed.border_width_bottom = 2
-		square_brush_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
+	match current_tool:
+		tool.SQUARE_BRUSH:
+			set_cursor_shape(CursorShape.CURSOR_CROSS)
+			cursor_panel.add_theme_stylebox_override("panel", stylebox_cursor_normal)
 
-	elif current_tool == tool.ROUND_BRUSH:
-		set_cursor_shape(CursorShape.CURSOR_CROSS)
-		cursor_panel.visible = true
-		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
-		new_stylebox_normal.bg_color = Color.TRANSPARENT
-		new_stylebox_normal.border_color = Color.BLACK
 
-		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
+			square_brush_button.add_theme_stylebox_override("normal", stylebox_button_pressed)
+			tool_label.text = "Square brush"
 
-		scroll_sidebar.visible = true
+		tool.ROUND_BRUSH:
+			var stylebox_cursor: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+			set_cursor_shape(CursorShape.CURSOR_CROSS)
+			stylebox_cursor = update_circular_stylebox(stylebox_cursor)
+			stylebox_cursor.bg_color = Color.TRANSPARENT
+			stylebox_cursor.border_color = Color.BLACK
+			cursor_panel.add_theme_stylebox_override("panel", stylebox_cursor)
 
-		var new_stylebox_pressed: StyleBox = (
-			circle_brush_button.get_theme_stylebox("normal").duplicate()
-		)
-		new_stylebox_pressed.border_width_left = 2
-		new_stylebox_pressed.border_width_right = 2
-		new_stylebox_pressed.border_width_top = 2
-		new_stylebox_pressed.border_width_bottom = 2
-		circle_brush_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
+			circle_brush_button.add_theme_stylebox_override("normal", stylebox_button_pressed)
+			tool_label.text = "Round Brush"
 
-	elif current_tool == tool.SELECTOR:
-		set_cursor_shape()
-		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = 3
-		new_stylebox_normal.corner_radius_top_right = 3
-		new_stylebox_normal.corner_radius_bottom_left = 3
-		new_stylebox_normal.corner_radius_bottom_right = 3
-		new_stylebox_normal.bg_color = Color.TRANSPARENT
-		new_stylebox_normal.border_color = Color.BLACK
-		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
+		tool.SELECTOR:
+			set_cursor_shape()
+			cursor_panel.add_theme_stylebox_override("panel", stylebox_cursor_normal)
+			scroll_sidebar.visible = false
 
-		scroll_sidebar.visible = false
+			selector_button.add_theme_stylebox_override("normal", stylebox_button_pressed)
+			reshape_selector_cursor_panel()
+			tool_label.text = "Selector"
 
-		var new_stylebox_pressed: StyleBox = (
-			selector_button.get_theme_stylebox("normal").duplicate()
-		)
-		new_stylebox_pressed.border_width_left = 2
-		new_stylebox_pressed.border_width_right = 2
-		new_stylebox_pressed.border_width_top = 2
-		new_stylebox_pressed.border_width_bottom = 2
-		selector_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
+		tool.TOKEN_PLACER:
+			var stylebox_cursor: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
+			set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
 
-	elif current_tool == tool.TOKEN_PLACER:
-		set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
-		cursor_panel.visible = true
+			scrollbar.set_value_no_signal(last_token_size)
+			brush_size = last_token_size
+			scrollbar_label.text = str(int(brush_size))
 
-		var new_stylebox_normal: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		new_stylebox_normal.corner_radius_top_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_top_right = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_left = brush_size / 2 - 1
-		new_stylebox_normal.corner_radius_bottom_right = brush_size / 2 - 1
-		new_stylebox_normal.bg_color = TOKEN_COLOR_LIST[token_color_index][0]
-		new_stylebox_normal.border_color = TOKEN_COLOR_LIST[token_color_index][1]
-		cursor_panel.add_theme_stylebox_override("panel", new_stylebox_normal)
+			stylebox_cursor = update_circular_stylebox(stylebox_cursor)
+			stylebox_cursor.bg_color = TOKEN_COLOR_LIST[token_color_index][0]
+			stylebox_cursor.border_color = TOKEN_COLOR_LIST[token_color_index][1]
+			cursor_panel.add_theme_stylebox_override("panel", stylebox_cursor)
 
-		scroll_sidebar.visible = true
+			token_button.add_theme_stylebox_override("normal", stylebox_button_pressed)
 
-		var new_stylebox_pressed: StyleBox = token_button.get_theme_stylebox("normal").duplicate()
-		new_stylebox_pressed.border_width_left = 2
-		new_stylebox_pressed.border_width_right = 2
-		new_stylebox_pressed.border_width_top = 2
-		new_stylebox_pressed.border_width_bottom = 2
-		token_button.add_theme_stylebox_override("normal", new_stylebox_pressed)
+			tool_label.text = "Token"
 
+	cursor_panel.size = Vector2(brush_size, brush_size)
+
+	if current_tool != tool.SELECTOR:
+		if in_sidebar:
+			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
+		else:
+			cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+
+func update_circular_stylebox(stylebox: StyleBox) -> StyleBox:
+	stylebox.corner_detail = 32
+	stylebox.corner_radius_top_left = brush_size / 2 - 1
+	stylebox.corner_radius_top_right = brush_size / 2 - 1
+	stylebox.corner_radius_bottom_left = brush_size / 2 - 1
+	stylebox.corner_radius_bottom_right = brush_size / 2 - 1
+
+	return stylebox
 
 func copy_viewport_texture() -> void:
 	var image: Image = drawing_viewport.get_texture().get_image()
@@ -784,6 +767,8 @@ func load_map(path: String) -> void:
 	dm_background.texture = image_texture
 	player_background.texture = image_texture
 
+	move_player_view(Vector2.ZERO)
+
 	if is_instance_valid(text):
 		text.queue_free()
 	if is_instance_valid(info_degus):
@@ -809,14 +794,10 @@ func select_tool(index: int) -> void:
 	tool_changed.emit(index)
 	update_tool_visuals()
 
-	if current_tool == tool.SQUARE_BRUSH:
-		tool_label.text = "Square brush"
-	elif current_tool == tool.ROUND_BRUSH:
-		tool_label.text = "Round brush"
-	elif current_tool == tool.SELECTOR:
-		tool_label.text = "Selector"
-	elif current_tool == tool.TOKEN_PLACER:
-		tool_label.text = "Token"
+
+func _process(_delta: float) -> void:
+	move_player_view(Vector2.ZERO)
+
 
 
 func move_background(background_node: Node2D) -> void:

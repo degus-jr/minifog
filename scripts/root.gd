@@ -147,7 +147,8 @@ func _ready() -> void:
 	scrollbar.connect("value_changed", update_brush_size)
 
 
-	player_camera.connect("on_mouse_pos_changed", move_player_view)
+	# player_camera.connect("on_mouse_pos_changed", func(pos: Vector2) -> void: move_player_view())
+	# dm_camera.connect("on_mouse_pos_changed", func(pos: Vector2) -> void: update_cursor_position())
 
 	file_menu.connect("id_pressed", _on_file_id_pressed)
 	help_menu.connect("id_pressed", _on_help_id_pressed)
@@ -231,6 +232,15 @@ func _ready() -> void:
 	if len(args) > 0:
 		load_map(args[0])
 
+func update_cursor_position() -> void:
+	if current_tool != tool.SELECTOR:
+		if in_sidebar:
+			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
+		else:
+			cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+	else:
+		reshape_selector_cursor_panel()
+
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey:
@@ -240,13 +250,7 @@ func _input(event: InputEvent) -> void:
 	if current_file_path == "":
 		return
 
-	if current_tool != tool.SELECTOR:
-		if in_sidebar:
-			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
-		else:
-			cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
-	else:
-		reshape_selector_cursor_panel()
+	update_cursor_position()
 
 	if event is InputEventKey:
 		process_keypresses(event)
@@ -518,7 +522,7 @@ func set_cursor_shape(shape: CursorShape = CursorShape.CURSOR_ARROW) -> void:
 	player_view_text.mouse_default_cursor_shape = shape
 
 
-func move_player_view(_pos : Vector2) -> void:
+func move_player_view() -> void:
 	var view_size: Vector2 = player_window.get_visible_rect().size
 	var view_transform: Transform2D = player_window.get_canvas_transform()
 
@@ -767,7 +771,7 @@ func load_map(path: String) -> void:
 	dm_background.texture = image_texture
 	player_background.texture = image_texture
 
-	move_player_view(Vector2.ZERO)
+	move_player_view()
 
 	if is_instance_valid(text):
 		text.queue_free()
@@ -796,7 +800,8 @@ func select_tool(index: int) -> void:
 
 
 func _process(_delta: float) -> void:
-	move_player_view(Vector2.ZERO)
+	move_player_view()
+	update_cursor_position()
 
 
 

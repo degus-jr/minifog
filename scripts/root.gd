@@ -809,6 +809,9 @@ func load_map(path: String) -> void:
 
 
 	move_player_view()
+	# dont think too hard about it but this fixes loading a map when you've
+	# already drawn on the one you're on right now
+	undo()
 
 
 func wait_one_frame_and_then_copy() -> void:

@@ -1,11 +1,10 @@
-[gd_scene load_steps=61 format=3 uid="uid://ct4l808ib7i8p"]
+[gd_scene load_steps=60 format=3 uid="uid://ct4l808ib7i8p"]
 
 [ext_resource type="Script" uid="uid://knnd3tgx0d0p" path="res://scripts/root.gd" id="1_fnbe8"]
 [ext_resource type="Script" uid="uid://dt52a1ixuy1te" path="res://scripts/panned_camera.gd" id="2_krtgi"]
-[ext_resource type="Shader" uid="uid://pq7ha0y0i57y" path="res://shaders/dm_shader.gdshader" id="3_fvqp8"]
+[ext_resource type="Shader" path="res://shaders/shader.gdshader" id="2_tw3kd"]
 [ext_resource type="Script" uid="uid://cags0c2x3gdno" path="res://scripts/drawing_node.gd" id="3_iu72d"]
 [ext_resource type="Texture2D" uid="uid://bxwdhua5sspow" path="res://resources/Fog.jpg" id="4_ak8k0"]
-[ext_resource type="Shader" uid="uid://buab0pprybnhw" path="res://shaders/player_shader.gdshader" id="5_v4wp5"]
 [ext_resource type="Texture2D" uid="uid://c5fyquod1odn1" path="res://resources/SquareIcon.png" id="6_tw3kd"]
 [ext_resource type="Texture2D" uid="uid://boq1lsdp808bb" path="res://resources/SelectorIcon.png" id="6_ue7po"]
 [ext_resource type="Texture2D" uid="uid://brwhl81c4jk7u" path="res://resources/CircleIcon.png" id="7_gd4vy"]
@@ -14,7 +13,8 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_xsao3"]
 resource_local_to_scene = true
-shader = ExtResource("3_fvqp8")
+shader = ExtResource("2_tw3kd")
+shader_parameter/alpha_ceil = 0.5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_7t0go"]
 content_margin_left = 6.0
@@ -380,7 +380,8 @@ corner_radius_bottom_right = 2
 corner_radius_bottom_left = 2
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_lrpuh"]
-shader = ExtResource("5_v4wp5")
+shader = ExtResource("2_tw3kd")
+shader_parameter/alpha_ceil = 1.0
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_m6m5x"]
 

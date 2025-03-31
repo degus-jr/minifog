@@ -746,7 +746,7 @@ func load_map(path: String) -> void:
 					warning.dialog_text = "Error loading image. Error code: %s" % error
 				warning.popup_centered()
 				return
-			print(error)
+
 			map_image.convert(Image.FORMAT_RGB8)
 
 			var map_image_width: int = map_image.get_size()[0]
@@ -765,7 +765,6 @@ func load_map(path: String) -> void:
 					Image.Interpolation.INTERPOLATE_CUBIC
 				)
 
-			get_fog_size(map_image.get_size())
 
 			mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_R8)
 			mask_image.fill(Color.RED)
@@ -773,6 +772,7 @@ func load_map(path: String) -> void:
 			mask_image_texture = ImageTexture.create_from_image(mask_image)
 			drawing_texture.texture = mask_image_texture
 
+		get_fog_size(map_image.get_size())
 		var image_texture: Texture2D = ImageTexture.new()
 		image_texture.set_image(map_image)
 		dm_background.texture = image_texture

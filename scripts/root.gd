@@ -421,10 +421,12 @@ func process_keypresses(event: InputEventKey) -> void:
 						save_dialog.popup()
 
 			KEY_K:
-				for tokens in all_placed_tokens:
-					if is_instance_valid(tokens['tokens']['dm']):
-						tokens[0]['dm'].visible = true
-						tokens[0]['player'].visible = true
+				# for tokens in all_placed_tokens:
+				# 	if is_instance_valid(tokens['tokens']['dm']):
+				# 		tokens[0]['dm'].visible = true
+				# 		tokens[0]['player'].visible = true
+				print(undo_list)
+				print(drawing_list)
 
 
 func undo() -> void:
@@ -818,10 +820,6 @@ func load_map(path: String) -> void:
 		dm_fog.material.set_shader_parameter("alpha_ceil", 0.5)
 		player_fog.material.set_shader_parameter("alpha_ceil", 1)
 
-
-	print(drawing_list)
-	drawing_list.append(mask_image_texture)
-
 	drawing_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
 
 	dm_fog.visible = true
@@ -830,8 +828,6 @@ func load_map(path: String) -> void:
 	player_fog.size = Vector2(fog_image_width, fog_image_height)
 	drawing_viewport.size = Vector2(fog_image_width, fog_image_height)
 
-	dm_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
-	player_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
 
 	dm_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
 	player_camera.position = Vector2(fog_image_width * 0.5, fog_image_height * 0.5)
@@ -841,9 +837,11 @@ func load_map(path: String) -> void:
 	move_background(dm_root)
 	move_player_view()
 
-	# reuse undo function to just force a redraw from the mask we just loaded
-	undo_list = [['draw', null]]
-	undo()
+	drawing_texture.visible = true
+	pretend_to_draw.emit()
+	dm_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
+	player_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
+
 
 
 func wait_one_frame_and_then_copy() -> void:

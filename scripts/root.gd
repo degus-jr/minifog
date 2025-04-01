@@ -19,12 +19,15 @@ const SelectorIcon = preload("res://resources/SelectorIcon.png")
 const InfoDegus = preload("res://resources/Info.png")
 const PlayerInfoDegus = preload("res://resources/PlayerInfo.png")
 
-const BRUSH_SIZE_MIN: int = 5
-const BRUSH_SIZE_MAX: int = 500
+const BRUSH_SIZE_MIN := 5
+const BRUSH_SIZE_MAX := 500
 
-const MAX_IMAGE_SIZE: float = 3000.0
+const UNDO_LIST_MAX_IMAGES := 20
+const UNDO_LIST_MAX_ALL := 100
 
-const CORNER_BASE_SIZE: int = 16
+const MAX_IMAGE_SIZE := 3000.0
+
+const CORNER_BASE_SIZE := 16
 
 const FOG_COLOR_LIST: Array = [
 	Color.BURLYWOOD,  # not actually used, stand in for fog
@@ -45,8 +48,6 @@ const TOKEN_COLOR_LIST: Array = [
 ]
 
 
-const DRAWING_LIST_MAX_SIZE: int = 15
-
 var current_tool: int = 0
 var fog_color_index: int = 0
 var token_color_index: int = 0
@@ -65,7 +66,8 @@ var hovering_over_gui := false
 var performance_mode := false
 var in_sidebar := false
 
-var drawing_list: Array = []
+var prev_mask: Texture2D
+
 var undo_list: Array = []
 var corner_list: Array = []
 
@@ -144,7 +146,6 @@ func _ready() -> void:
 	load_dialog.connect("file_selected", func(path: String) -> void: load_map(path))
 	save_dialog.connect("file_selected", func(path: String) -> void: write_map(path))
 	scrollbar.connect("value_changed", update_brush_size)
-
 
 	# player_camera.connect("on_mouse_pos_changed", func(_pos: Vector2) -> void: move_player_view())
 	# dm_camera.connect("on_mouse_pos_changed", func(pos: Vector2) -> void: update_cursor_position())
@@ -243,11 +244,6 @@ func update_cursor_position() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		if event.pressed:
-			if event.keycode == KEY_L:
-				load_dialog.popup()
-
 	update_cursor_position()
 
 	if event is InputEventKey:
@@ -267,8 +263,12 @@ func _input(event: InputEvent) -> void:
 						if hovered_tokens.is_empty():
 							var tokens: Dictionary[String, Panel] = make_token()
 							undo_list.append(["place_token", {'tokens': tokens}])
+							if len(undo_list) > UNDO_LIST_MAX_ALL:
+								undo_list.pop_front()
 						else:
 							undo_list.append(["move_token", {'tokens': hovered_tokens, 'position': hovered_tokens['dm'].position}])
+							if len(undo_list) > UNDO_LIST_MAX_ALL:
+								undo_list.pop_front()
 							held_tokens = hovered_tokens
 					else:
 						held_tokens = {}
@@ -280,6 +280,8 @@ func _input(event: InputEvent) -> void:
 						dm_token.visible = false
 						player_token.visible = false
 						undo_list.append(["remove_token", {'tokens': {'dm': dm_token, 'player': player_token}}])
+						if len(undo_list) > UNDO_LIST_MAX_ALL:
+							undo_list.pop_front()
 
 						hovered_tokens = {}
 
@@ -367,6 +369,8 @@ func process_keypresses(event: InputEventKey) -> void:
 		if not hovered_tokens.is_empty() and event.keycode in range(KEY_0, KEY_9 + 1):
 			var previous_number: String = hovered_tokens['dm'].get_child(0).text
 			undo_list.append(['change_number', {'tokens': hovered_tokens, 'number': previous_number}])
+			if len(undo_list) > UNDO_LIST_MAX_ALL:
+				undo_list.pop_front()
 			var number := str(event.keycode - KEY_0)
 			hovered_tokens['dm'].get_child(0).text = number
 			hovered_tokens['player'].get_child(0).text = number
@@ -420,17 +424,18 @@ func process_keypresses(event: InputEventKey) -> void:
 					else:
 						save_dialog.popup()
 
+			KEY_L:
+				load_dialog.popup()
+
 			KEY_K:
 				# for tokens in all_placed_tokens:
 				# 	if is_instance_valid(tokens['tokens']['dm']):
 				# 		tokens[0]['dm'].visible = true
 				# 		tokens[0]['player'].visible = true
-				print(undo_list)
-				print(drawing_list)
+				print(len(undo_list))
 
 
 func undo() -> void:
-	print(undo_list)
 	if undo_list.is_empty():
 		return
 
@@ -441,20 +446,13 @@ func undo() -> void:
 
 	match action:
 		"draw":
-			if len(drawing_list) > 1:
-				drawing_list.pop_back()
-
-			drawing_texture.texture = drawing_list[-1]
-			drawing_texture.visible = true
-			dm_fog.material.set_shader_parameter("mask_texture", payload)
-			player_fog.material.set_shader_parameter("mask_texture", payload)
-
 			pretend_to_draw.emit()
 
-			drawing_texture.texture = drawing_list[-1]
+			drawing_texture.texture = payload['mask']
 			drawing_texture.visible = true
 			dm_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
 			player_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
+			prev_mask = payload['mask']
 
 		"place_token":
 			if not is_instance_valid(payload['tokens']['dm']):
@@ -669,11 +667,12 @@ func copy_viewport_texture() -> void:
 	image.convert(Image.FORMAT_R8)
 	var image_texture: Texture2D = ImageTexture.new()
 	image_texture = ImageTexture.create_from_image(image)
-	drawing_list.append(image_texture)
-	undo_list.append(["draw", null])
-
-	if len(drawing_list) > DRAWING_LIST_MAX_SIZE:
-		drawing_list.pop_front()
+	undo_list.append(["draw", {"mask": prev_mask}])
+	# just to make sure we don't use too much RAM
+	# other undos are fine though probably don't take up much space
+	if len(undo_list) > UNDO_LIST_MAX_IMAGES:
+		undo_list.pop_front()
+	prev_mask = image_texture
 
 
 func update_fog_texture(color: Color) -> void:
@@ -706,7 +705,7 @@ func get_fog_size(image_size: Vector2i) -> void:
 
 
 func load_map(path: String) -> void:
-	drawing_list = []
+	undo_list = []
 
 	for dictionary in all_placed_tokens:
 		if is_instance_valid(dictionary['tokens']['dm']):
@@ -714,7 +713,6 @@ func load_map(path: String) -> void:
 			dictionary['tokens']['player'].queue_free()
 
 	all_placed_tokens = []
-	print(undo_list)
 
 	if path == "noargs":
 		get_fog_size(InfoDegus.get_size())
@@ -795,12 +793,13 @@ func load_map(path: String) -> void:
 					ratio = MAX_IMAGE_SIZE / map_image_height
 
 				map_image.resize(
-					map_image_width * ratio,
-					map_image_height * ratio,
+					int(map_image_width * ratio),
+					int(map_image_height * ratio),
 					Image.Interpolation.INTERPOLATE_CUBIC
 				)
 
 
+			get_fog_size(map_image.get_size())
 			mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_R8)
 			mask_image.fill(Color.RED)
 
@@ -821,6 +820,8 @@ func load_map(path: String) -> void:
 		player_fog.material.set_shader_parameter("alpha_ceil", 1)
 
 	drawing_viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+
+	prev_mask = mask_image_texture
 
 	dm_fog.visible = true
 	player_fog.visible = true

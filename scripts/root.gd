@@ -422,9 +422,9 @@ func process_keypresses(event: InputEventKey) -> void:
 
 			KEY_K:
 				for tokens in all_placed_tokens:
-					if is_instance_valid(tokens['dm']):
-						tokens['dm'].visible = true
-						tokens['player'].visible = true
+					if is_instance_valid(tokens['tokens']['dm']):
+						tokens[0]['dm'].visible = true
+						tokens[0]['player'].visible = true
 
 
 func undo() -> void:
@@ -526,7 +526,7 @@ func make_token(pos: Vector2 = Vector2.INF) -> Dictionary[String, Panel]:
 	token_dict['dm'].connect("mouse_entered", func() -> void: hovered_tokens = token_dict)
 	token_dict['dm'].connect("mouse_exited", func() -> void: hovered_tokens = {})
 
-	all_placed_tokens.append(token_dict)
+	all_placed_tokens.append({'tokens': token_dict, 'color_id': token_color_index})
 	print(all_placed_tokens)
 	print(len(all_placed_tokens))
 
@@ -705,6 +705,15 @@ func get_fog_size(image_size: Vector2i) -> void:
 
 func load_map(path: String) -> void:
 	drawing_list = []
+
+	for dictionary in all_placed_tokens:
+		if is_instance_valid(dictionary['tokens']['dm']):
+			dictionary['tokens']['dm'].queue_free()
+			dictionary['tokens']['player'].queue_free()
+
+	all_placed_tokens = []
+	print(undo_list)
+
 	if path == "noargs":
 		get_fog_size(InfoDegus.get_size())
 		mask_image = Image.create(fog_image_width, fog_image_width, false, Image.FORMAT_R8)
@@ -832,8 +841,8 @@ func load_map(path: String) -> void:
 	move_background(dm_root)
 	move_player_view()
 
-	# dont think too hard about it but this fixes loading a map when you've
-	# already drawn on the one you're on right now
+	# reuse undo function to just force a redraw from the mask we just loaded
+	undo_list = [['draw', null]]
 	undo()
 
 

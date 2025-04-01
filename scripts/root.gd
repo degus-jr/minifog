@@ -45,7 +45,6 @@ const TOKEN_COLOR_LIST: Array = [
 ]
 
 
-
 const DRAWING_LIST_MAX_SIZE: int = 15
 
 var current_tool: int = 0
@@ -73,6 +72,8 @@ var corner_list: Array = []
 var selector_start_pos := Vector2.ZERO
 var selector_end_pos := Vector2.ZERO
 
+var all_placed_tokens: Array[Dictionary] = []
+
 var current_file_path: String
 
 var fog_scaling: float = 1.2
@@ -86,8 +87,8 @@ var mask_image: Image
 var light_brush: Image
 var dark_brush: Image
 
-var hovered_tokens: Array[Panel] = []
-var held_tokens: Array[Panel] = []
+var hovered_tokens: Dictionary[String, Panel] = {}
+var held_tokens: Dictionary[String, Panel] = {}
 
 var stylebox_button_pressed: StyleBox
 var stylebox_button_not_pressed: StyleBox
@@ -145,7 +146,7 @@ func _ready() -> void:
 	scrollbar.connect("value_changed", update_brush_size)
 
 
-	# player_camera.connect("on_mouse_pos_changed", func(pos: Vector2) -> void: move_player_view())
+	# player_camera.connect("on_mouse_pos_changed", func(_pos: Vector2) -> void: move_player_view())
 	# dm_camera.connect("on_mouse_pos_changed", func(pos: Vector2) -> void: update_cursor_position())
 
 	file_menu.connect("id_pressed", _on_file_id_pressed)
@@ -264,24 +265,23 @@ func _input(event: InputEvent) -> void:
 				if event.button_index == MOUSE_BUTTON_LEFT:
 					if event.pressed:
 						if hovered_tokens.is_empty():
-							var tokens: Array[Panel] = make_token()
-							undo_list.append(["place_token", tokens])
+							var tokens: Dictionary[String, Panel] = make_token()
+							undo_list.append(["place_token", {'tokens': tokens}])
 						else:
-							undo_list.append(["move_token", [hovered_tokens, hovered_tokens[0].position]])
+							undo_list.append(["move_token", {'tokens': hovered_tokens, 'position': hovered_tokens['dm'].position}])
 							held_tokens = hovered_tokens
 					else:
-						held_tokens = []
+						held_tokens = {}
 
 				if event.button_index == MOUSE_BUTTON_RIGHT:
 					if not hovered_tokens.is_empty():
-
-						var dm_token : Panel = hovered_tokens[0]
-						var player_token : Panel = hovered_tokens[1]
+						var dm_token : Panel = hovered_tokens['dm']
+						var player_token : Panel = hovered_tokens['player']
 						dm_token.visible = false
 						player_token.visible = false
-						undo_list.append(["remove_token", [dm_token, player_token]])
+						undo_list.append(["remove_token", {'tokens': {'dm': dm_token, 'player': player_token}}])
 
-						hovered_tokens = []
+						hovered_tokens = {}
 
 			tool.SELECTOR:
 				if (
@@ -347,8 +347,8 @@ func _input(event: InputEvent) -> void:
 			drawing_texture.visible = false
 
 		if not held_tokens.is_empty():
-			held_tokens[0].position = get_global_mouse_position() - Vector2.ONE * held_tokens[0].size / 2
-			held_tokens[1].position = get_global_mouse_position() - Vector2.ONE * held_tokens[0].size / 2
+			held_tokens['dm'].position = get_global_mouse_position() - Vector2.ONE * held_tokens['dm'].size / 2
+			held_tokens['player'].position = get_global_mouse_position() - Vector2.ONE * held_tokens['player'].size / 2
 
 		if current_tool == tool.TOKEN_PLACER:
 			if hovered_tokens.is_empty():
@@ -364,6 +364,14 @@ func process_keypresses(event: InputEventKey) -> void:
 		ctrl_held = event.pressed
 
 	if event.pressed:
+		if not hovered_tokens.is_empty() and event.keycode in range(KEY_0, KEY_9 + 1):
+			var previous_number: String = hovered_tokens['dm'].get_child(0).text
+			undo_list.append(['change_number', {'tokens': hovered_tokens, 'number': previous_number}])
+			var number := str(event.keycode - KEY_0)
+			hovered_tokens['dm'].get_child(0).text = number
+			hovered_tokens['player'].get_child(0).text = number
+			return
+
 		match event.keycode:
 			KEY_1:
 				select_tool(tool.SQUARE_BRUSH)
@@ -412,6 +420,12 @@ func process_keypresses(event: InputEventKey) -> void:
 					else:
 						save_dialog.popup()
 
+			KEY_K:
+				for tokens in all_placed_tokens:
+					if is_instance_valid(tokens['dm']):
+						tokens['dm'].visible = true
+						tokens['player'].visible = true
+
 
 func undo() -> void:
 	print(undo_list)
@@ -423,41 +437,45 @@ func undo() -> void:
 	var action: String = last[0]
 	var payload: Variant = last[1]
 
-	if action == "draw":
-		if len(drawing_list) > 1:
-			drawing_list.pop_back()
+	match action:
+		"draw":
+			if len(drawing_list) > 1:
+				drawing_list.pop_back()
 
-		drawing_texture.texture = drawing_list[-1]
-		drawing_texture.visible = true
-		dm_fog.material.set_shader_parameter("mask_texture", payload)
-		player_fog.material.set_shader_parameter("mask_texture", payload)
+			drawing_texture.texture = drawing_list[-1]
+			drawing_texture.visible = true
+			dm_fog.material.set_shader_parameter("mask_texture", payload)
+			player_fog.material.set_shader_parameter("mask_texture", payload)
 
-		pretend_to_draw.emit()
+			pretend_to_draw.emit()
 
-		drawing_texture.texture = drawing_list[-1]
-		drawing_texture.visible = true
-		dm_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
-		player_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
+			drawing_texture.texture = drawing_list[-1]
+			drawing_texture.visible = true
+			dm_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
+			player_fog.material.set_shader_parameter("mask_texture", drawing_viewport.get_texture())
 
-	elif action == "place_token":
-		if not is_instance_valid(payload[0]):
-			undo()
-		else:
-			payload[0].queue_free()
-			payload[1].queue_free()
+		"place_token":
+			if not is_instance_valid(payload['tokens']['dm']):
+				undo()
+			else:
+				payload['tokens']['dm'].queue_free()
+				payload['tokens']['player'].queue_free()
 
-	elif action == "remove_token":
-		payload[0].visible = true
-		payload[1].visible = true
+		"remove_token":
+			payload['tokens']['dm'].visible = true
+			payload['tokens']['player'].visible = true
 
-	elif action == "move_token":
-		var pos : Vector2 = payload[1]
-		payload[0][0].position = pos
-		payload[0][1].position = pos
+		"move_token":
+			payload['tokens']['dm'].position = payload['position']
+			payload['tokens']['player'].position = payload['position']
+
+		"change_number":
+			payload['tokens']['dm'].get_child(0).text = payload['number']
+			payload['tokens']['player'].get_child(0).text = payload['number']
 
 
-func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
-	var token_list: Array[Panel] = []
+func make_token(pos: Vector2 = Vector2.INF) -> Dictionary[String, Panel]:
+	var token_dict: Dictionary[String, Panel] = {}
 
 	var token_pos : Vector2
 	if pos == Vector2.INF:
@@ -470,12 +488,13 @@ func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
 		var token := Panel.new()
 
 		var label := Label.new()
-		label.text = "1"
 
-		label.size = Vector2(brush_size, brush_size) / 2
+
+		label.text = "1"
+		label.set("theme_override_font_sizes/font_size", brush_size / 2)
+		label.size = Vector2(brush_size, brush_size)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.position = Vector2(brush_size, brush_size) / 4
 
 		token.add_child(label)
 
@@ -497,16 +516,21 @@ func make_token(pos: Vector2 = Vector2.INF) -> Array[Panel]:
 
 		if i == 0:
 			add_child(token)
+			token_dict['dm'] = token
 		else:
 			player_window.add_child(token)
+			token_dict['player'] = token
 
-		token_list.append(token)
 
-	token_list[0].tooltip_text = "Hold left mouse to drag this token, press left mouse to delete"
-	token_list[0].connect("mouse_entered", func() -> void: hovered_tokens = token_list)
-	token_list[0].connect("mouse_exited", func() -> void: hovered_tokens = [])
+	token_dict['dm'].tooltip_text = "Hold left mouse to drag this token, press left mouse to delete"
+	token_dict['dm'].connect("mouse_entered", func() -> void: hovered_tokens = token_dict)
+	token_dict['dm'].connect("mouse_exited", func() -> void: hovered_tokens = {})
 
-	return token_list
+	all_placed_tokens.append(token_dict)
+	print(all_placed_tokens)
+	print(len(all_placed_tokens))
+
+	return token_dict
 
 
 func update_brush_size(value: float) -> void:
@@ -806,9 +830,8 @@ func load_map(path: String) -> void:
 
 	move_background(player_root)
 	move_background(dm_root)
-
-
 	move_player_view()
+
 	# dont think too hard about it but this fixes loading a map when you've
 	# already drawn on the one you're on right now
 	undo()

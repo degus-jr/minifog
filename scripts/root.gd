@@ -391,7 +391,6 @@ func process_keypresses(event: InputEventKey) -> void:
 
 			KEY_C:
 				token_color_index = (token_color_index + 1) % len(TOKEN_COLOR_LIST)
-				print(TOKEN_COLOR_LIST[token_color_index])
 				update_tool_visuals()
 
 			KEY_Z:
@@ -433,6 +432,7 @@ func process_keypresses(event: InputEventKey) -> void:
 				# 		tokens[0]['dm'].visible = true
 				# 		tokens[0]['player'].visible = true
 				print(len(undo_list))
+				serialize_tokens(all_placed_tokens)
 
 
 func undo() -> void:
@@ -474,7 +474,7 @@ func undo() -> void:
 			payload['tokens']['player'].get_child(0).text = payload['number']
 
 
-func make_token(pos: Vector2 = Vector2.INF) -> Dictionary[String, Panel]:
+func make_token(pos: Vector2 = Vector2.INF, text: String = "", size: int = -1, color_id: int = -1) -> Dictionary[String, Panel]:
 	var token_dict: Dictionary[String, Panel] = {}
 
 	var token_pos : Vector2
@@ -482,7 +482,10 @@ func make_token(pos: Vector2 = Vector2.INF) -> Dictionary[String, Panel]:
 		token_pos = get_global_mouse_position() - Vector2.ONE * brush_size / 2
 	else:
 		token_pos = pos
-		
+
+	var token_size: int = brush_size if size == -1 else size
+	var token_color_id: int = token_color_index if color_id == -1 else color_id
+	var token_text: String = "1" if text == "" else text
 
 	for i in range(2):
 		var token := Panel.new()
@@ -490,26 +493,26 @@ func make_token(pos: Vector2 = Vector2.INF) -> Dictionary[String, Panel]:
 		var label := Label.new()
 
 
-		label.text = "1"
-		label.set("theme_override_font_sizes/font_size", brush_size / 2)
-		label.size = Vector2(brush_size, brush_size)
+		label.text = token_text
+		label.set("theme_override_font_sizes/font_size", token_size / 2)
+		label.size = Vector2(token_size, token_size)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 		token.add_child(label)
 
-		token.size = Vector2(brush_size, brush_size)
+		token.size = Vector2(token_size, token_size)
 		token.position = token_pos
 		token.z_index = -1
 
 		var stylebox_cursor: StyleBox = cursor_panel.get_theme_stylebox("panel").duplicate()
-		stylebox_cursor.corner_radius_top_left = brush_size / 2 - 1
-		stylebox_cursor.corner_radius_top_right = brush_size / 2 - 1
-		stylebox_cursor.corner_radius_bottom_left = brush_size / 2 - 1
-		stylebox_cursor.corner_radius_bottom_right = brush_size / 2 - 1
+		stylebox_cursor.corner_radius_top_left = token_size / 2 - 1
+		stylebox_cursor.corner_radius_top_right = token_size / 2 - 1
+		stylebox_cursor.corner_radius_bottom_left = token_size / 2 - 1
+		stylebox_cursor.corner_radius_bottom_right = token_size / 2 - 1
 		stylebox_cursor.corner_detail = 32
-		stylebox_cursor.bg_color = TOKEN_COLOR_LIST[token_color_index][0]
-		stylebox_cursor.border_color = TOKEN_COLOR_LIST[token_color_index][1]
+		stylebox_cursor.bg_color = TOKEN_COLOR_LIST[token_color_id][0]
+		stylebox_cursor.border_color = TOKEN_COLOR_LIST[token_color_id][1]
 		token.add_theme_stylebox_override("panel", stylebox_cursor)
 
 		token.mouse_default_cursor_shape = CursorShape.CURSOR_MOVE
@@ -526,9 +529,7 @@ func make_token(pos: Vector2 = Vector2.INF) -> Dictionary[String, Panel]:
 	token_dict['dm'].connect("mouse_entered", func() -> void: hovered_tokens = token_dict)
 	token_dict['dm'].connect("mouse_exited", func() -> void: hovered_tokens = {})
 
-	all_placed_tokens.append({'tokens': token_dict, 'color_id': token_color_index})
-	print(all_placed_tokens)
-	print(len(all_placed_tokens))
+	all_placed_tokens.append({'tokens': token_dict, 'color_id': token_color_id})
 
 	return token_dict
 
@@ -765,6 +766,13 @@ func load_map(path: String) -> void:
 			map_image.load_png_from_buffer(reader.read_file("map.png"))
 			map_image.convert(Image.FORMAT_RGB8)
 
+			var objects: String = reader.read_file("objects.json").get_string_from_utf8()
+
+			if len(objects) > 0:
+				for line in objects.split("\n"):
+					var dict: Dictionary = JSON.parse_string(line)
+					make_token(Vector2(dict["x_pos"], dict["y_pos"]), dict["text"], dict["size"], dict["color_id"])
+
 			reader.close()
 
 		else:
@@ -908,9 +916,33 @@ func write_map(path: String) -> void:
 	writer.write_file(drawing_viewport.get_texture().get_image().save_png_to_buffer())
 	writer.start_file("map.png")
 	writer.write_file(map_image.save_png_to_buffer())
+	writer.start_file("objects.json")
+	writer.write_file(serialize_tokens(all_placed_tokens).to_utf8_buffer())
 	writer.close_file()
 
 	writer.close()
+
+func serialize_tokens(placed_tokens: Array[Dictionary]) -> String:
+	var string : String = ""
+	for dictionary in placed_tokens:
+		if not is_instance_valid(dictionary['tokens']['dm']):
+			continue
+		if dictionary['tokens']['dm'].visible == false:
+			continue
+
+		var token: Panel = dictionary['tokens']['dm']
+		var json_dict := {
+			"x_pos": token.position.x,
+			"y_pos": token.position.y,
+			"size": token.size.x,
+			"color_id": dictionary["color_id"],
+			"text": token.get_child(0).text,
+		}
+
+		string += JSON.stringify(json_dict)
+		string += "\n"
+
+	return string.trim_suffix("\n")
 
 
 func _on_help_id_pressed(id: int) -> void:

@@ -256,6 +256,33 @@ func _input(event: InputEvent) -> void:
 		if hovering_over_gui and event.pressed:
 			return
 
+		if not hovered_tokens.is_empty() and event.pressed:
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				undo_list.append(["move_token", {'tokens': hovered_tokens, 'position': hovered_tokens['dm'].position}])
+				if len(undo_list) > UNDO_LIST_MAX_ALL:
+					undo_list.pop_front()
+				held_tokens = hovered_tokens
+
+			if event.button_index == MOUSE_BUTTON_RIGHT:
+				var dm_token : Panel = hovered_tokens['dm']
+				var player_token : Panel = hovered_tokens['player']
+				dm_token.visible = false
+				player_token.visible = false
+				undo_list.append(["remove_token", {'tokens': {'dm': dm_token, 'player': player_token}}])
+				if len(undo_list) > UNDO_LIST_MAX_ALL:
+					undo_list.pop_front()
+
+				hovered_tokens = {}
+				return
+
+		if not held_tokens.is_empty():
+			if event.button_index == MOUSE_BUTTON_LEFT:
+				if not event.pressed:
+					held_tokens = {}
+			print('returning')
+			return
+
+
 		match current_tool:
 			tool.TOKEN_PLACER:
 				if event.button_index == MOUSE_BUTTON_LEFT:
@@ -265,25 +292,7 @@ func _input(event: InputEvent) -> void:
 							undo_list.append(["place_token", {'tokens': tokens}])
 							if len(undo_list) > UNDO_LIST_MAX_ALL:
 								undo_list.pop_front()
-						else:
-							undo_list.append(["move_token", {'tokens': hovered_tokens, 'position': hovered_tokens['dm'].position}])
-							if len(undo_list) > UNDO_LIST_MAX_ALL:
-								undo_list.pop_front()
-							held_tokens = hovered_tokens
-					else:
-						held_tokens = {}
 
-				if event.button_index == MOUSE_BUTTON_RIGHT:
-					if not hovered_tokens.is_empty():
-						var dm_token : Panel = hovered_tokens['dm']
-						var player_token : Panel = hovered_tokens['player']
-						dm_token.visible = false
-						player_token.visible = false
-						undo_list.append(["remove_token", {'tokens': {'dm': dm_token, 'player': player_token}}])
-						if len(undo_list) > UNDO_LIST_MAX_ALL:
-							undo_list.pop_front()
-
-						hovered_tokens = {}
 
 			tool.SELECTOR:
 				if (

@@ -262,6 +262,7 @@ func _input(event: InputEvent) -> void:
 				if len(undo_list) > UNDO_LIST_MAX_ALL:
 					undo_list.pop_front()
 				held_tokens = hovered_tokens
+				held_tokens['dm'].mouse_default_cursor_shape = CursorShape.CURSOR_MOVE
 
 			if event.button_index == MOUSE_BUTTON_RIGHT:
 				var dm_token : Panel = hovered_tokens['dm']
@@ -278,6 +279,7 @@ func _input(event: InputEvent) -> void:
 		if not held_tokens.is_empty():
 			if event.button_index == MOUSE_BUTTON_LEFT:
 				if not event.pressed:
+					held_tokens['dm'].mouse_default_cursor_shape = CursorShape.CURSOR_POINTING_HAND
 					held_tokens = {}
 			print('returning')
 			return
@@ -289,6 +291,9 @@ func _input(event: InputEvent) -> void:
 					if event.pressed:
 						if hovered_tokens.is_empty():
 							var tokens: Dictionary[String, Panel] = make_token()
+							hovered_tokens = tokens
+							cursor_node.visible = false
+							set_cursor_shape(CursorShape.CURSOR_MOVE)
 							undo_list.append(["place_token", {'tokens': tokens}])
 							if len(undo_list) > UNDO_LIST_MAX_ALL:
 								undo_list.pop_front()
@@ -361,13 +366,21 @@ func _input(event: InputEvent) -> void:
 			held_tokens['dm'].position = get_global_mouse_position() - Vector2.ONE * held_tokens['dm'].size / 2
 			held_tokens['player'].position = get_global_mouse_position() - Vector2.ONE * held_tokens['player'].size / 2
 
-		if current_tool == tool.TOKEN_PLACER:
-			if hovered_tokens.is_empty():
-				cursor_node.visible = true
-				set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
-			else:
+		if hovered_tokens.is_empty():
+			cursor_node.visible = true
+			match current_tool:
+				tool.SQUARE_BRUSH:
+					set_cursor_shape(CursorShape.CURSOR_CROSS)
+				tool.ROUND_BRUSH:
+					set_cursor_shape(CursorShape.CURSOR_CROSS)
+				tool.SELECTOR:
+					set_cursor_shape(CursorShape.CURSOR_ARROW)
+				tool.TOKEN_PLACER:
+					set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
+		else:
+			if not m1_held and not m2_held:
 				cursor_node.visible = false
-				set_cursor_shape(CursorShape.CURSOR_MOVE)
+				set_cursor_shape(CursorShape.CURSOR_POINTING_HAND)
 
 
 func process_keypresses(event: InputEventKey) -> void:
@@ -524,7 +537,7 @@ func make_token(pos: Vector2 = Vector2.INF, text: String = "", size: int = -1, c
 		stylebox_cursor.border_color = TOKEN_COLOR_LIST[token_color_id][1]
 		token.add_theme_stylebox_override("panel", stylebox_cursor)
 
-		token.mouse_default_cursor_shape = CursorShape.CURSOR_MOVE
+		token.mouse_default_cursor_shape = CursorShape.CURSOR_POINTING_HAND
 
 		if i == 0:
 			add_child(token)
@@ -534,7 +547,7 @@ func make_token(pos: Vector2 = Vector2.INF, text: String = "", size: int = -1, c
 			token_dict['player'] = token
 
 
-	token_dict['dm'].tooltip_text = "Hold left mouse to drag this token, press left mouse to delete"
+	token_dict['dm'].tooltip_text = "Hold left mouse to drag.\nPress left mouse to delete.\nType a number to change label."
 	token_dict['dm'].connect("mouse_entered", func() -> void: hovered_tokens = token_dict)
 	token_dict['dm'].connect("mouse_exited", func() -> void: hovered_tokens = {})
 
@@ -657,11 +670,7 @@ func update_tool_visuals() -> void:
 
 	cursor_panel.size = Vector2(brush_size, brush_size)
 
-	if current_tool != tool.SELECTOR:
-		if in_sidebar:
-			cursor_node.position = dm_camera.position - Vector2.ONE * brush_size / 2
-		else:
-			cursor_node.position = get_global_mouse_position() - Vector2.ONE * brush_size / 2
+	update_cursor_position()
 
 func update_circular_stylebox(stylebox: StyleBox) -> StyleBox:
 	stylebox.corner_detail = 32
